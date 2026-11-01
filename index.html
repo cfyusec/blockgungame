@@ -402,7 +402,7 @@ function step(dt){
 }
 /* ---------- Animation actions ---------- */
 let ai=0,am=0,mh=false,mh2=false,bs=0;
-const RX={idle:/idle|stand/i,draw:/draw|deploy|equip/i,shoot:/shoot|fire|attack|shot|midslash|swing/i,stab:/stab(?!_?miss)/i,stabmiss:/stab_?miss/i,reload:/reload/i,inspect:/inspect|lookat|look_at/i};
+const RX={idle:/idle|stand/i,draw:/draw|deploy|equip/i,shoot:/shoot|fire|attack|shot|slash|swing/i,stab:/stab(?!_?miss)/i,stabmiss:/stab_?miss/i,reload:/reload/i,inspect:/inspect|lookat|look_at/i};
 const SIL={m4a1:false,usp:false};
 const findSeq=(m,k)=>{const l=m.seqs.map((s,i)=>RX[k].test(s.n)?i:-1).filter(i=>i>=0);if(!(m.wid in SIL)||!l.length)return l;const f=l.filter(i=>/unsil/i.test(m.seqs[i].n)===!SIL[m.wid]);return f.length?f:l;};
 function flash(t,ms=1500){$('msg').textContent=t;clearTimeout(am);am=setTimeout(()=>{$('msg').textContent=''},ms);}
@@ -412,7 +412,7 @@ function act(k,q){const m=third?pm:vm;if(!m){if(k==='shoot'&&!third&&performance
  if(m.busy&&!(m.tag==='inspect'||m.tag==='debug'||(k==='shoot'&&m.tag==='shoot')))return;
  if(k==='shoot'&&performance.now()<nextFire)return;
  if(k==='shoot'&&!third&&!gunFire())return;
- const l=findSeq(m,k);
+ let l=findSeq(m,k);if(k==='shoot'&&S.load[cs]==='glock18'){const re=BURST.glock18?/^shoot[12]?$/i:/^shoot3$/i,f=l.filter(i=>re.test(m.seqs[i].n));if(f.length)l=f;}
  if(!l.length){if(!q)flashA('No animation: '+k);return;}
  if(k==='shoot')nextFire=performance.now()+(RATE[S.load[cs]]||.12)*1000;
  const i=l[Math.floor(Math.random()*l.length)];m.play(i,true);m.tag=k;if(!q)flashA(k+' → '+m.seqs[i].n);}
@@ -505,7 +505,8 @@ function showTab(t){document.querySelectorAll('.tab').forEach(s=>s.style.display
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
 /* buy menu */
 let buyOpen=false,bcat=null,bsel=null,wasPlaying=false;
-function openBuy(){wasPlaying=playing;playing=false;mh=false;buyOpen=true;bcat=null;bsel=null;for(const k in K)K[k]=false;try{if(document.pointerLockElement)document.exitPointerLock();}catch(e){}
+function inBuyZone(){if(!inMatch||S.map==='train')return true;const L=(P.team==='T'||P.team==='CT')?spawnsFor(P.team):(world.spawns||[]);if(!L.length)return true;return L.some(s=>Math.hypot(s.x-P.p.x,s.z-P.p.z)<450&&Math.abs(s.y-P.p.y)<200);}
+function openBuy(){if(!inBuyZone()){flash('You are not in a buy zone',1800);return;}wasPlaying=playing;playing=false;mh=false;buyOpen=true;bcat=null;bsel=null;for(const k in K)K[k]=false;try{if(document.pointerLockElement)document.exitPointerLock();}catch(e){}
  $('menu').style.display='none';$('buy').style.display='flex';renderBuy();}
 function closeBuy(){buyOpen=false;$('buy').style.display='none';if(wasPlaying)play();else $('menu').style.display='flex';}
 function buy(w){const inf=S.map==='train';if(inMatch&&!inf&&w.price>P.money){flash('Not enough money ($'+w.price+')');return;}if(inMatch&&!inf)P.money-=w.price;if(w.cat===7){if(w.id==='armor'){P.ar=100;flash('Armor restored');}else{GN[w.id]=Math.min(2,(GN[w.id]||0)+1);flash(w.name+' x'+GN[w.id]);}closeBuy();return;}
@@ -573,7 +574,6 @@ document.addEventListener('keydown',e=>{
  if(!playing)return;K[e.code]=true;
  if(!locked&&!e.repeat)lockMouse();if(e.ctrlKey)e.preventDefault();if(e.code==='KeyB'&&!e.repeat){openBuy();return;}
  if(e.code==='Space'){P.jb=0.1;e.preventDefault();}
- if(e.code==='KeyT')restart(true);
  if(e.code==='KeyR'&&!e.repeat)startReload();if(e.code==='KeyE'&&!e.repeat)usePickup();if(e.code==='KeyG'&&!e.repeat)dropGun();if(e.code==='KeyN'&&!e.repeat)placeBlock();if(e.code==='KeyZ'&&!e.repeat)undoBlock();if(e.code==='KeyF'&&!e.repeat)act('inspect');
  if(e.code==='KeyH'&&!e.repeat){S.hand=S.hand==='R'?'L':'R';save();applyUI();flash(S.hand==='L'?'Left hand':'Right hand');}
  const dm=/^(Digit|Numpad)(\d)$/.exec(e.code);
