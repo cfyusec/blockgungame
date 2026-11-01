@@ -61,6 +61,7 @@ body.mainscr #money,body.mainscr #bars{display:none!important}
 .mh{color:var(--acc);font-weight:700;margin:8px 0 3px;border-bottom:1px solid var(--edge)}
 #loading{position:fixed;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--acc);font:700 20px "Lucida Console",monospace}
 #lbar{width:min(360px,70vw);height:10px;border:1px solid var(--acc)}#lfill{display:block;height:100%;width:0;background:var(--acc);transition:width .1s}
+.stabs{display:flex;gap:2px;border-bottom:1px solid var(--edge);margin-bottom:8px}.stabs button{background:#0003;color:var(--mute);border:1px solid var(--edge);border-bottom:0;border-radius:6px 6px 0 0;padding:5px 14px;cursor:pointer;font:inherit}.stabs button.on{background:var(--panel);color:var(--acc);font-weight:700}.sp[hidden]{display:none}
 #scope{position:fixed;inset:0;pointer-events:none;display:none;background:radial-gradient(circle at 50% 50%,transparent 0,transparent 41vmin,#000 41.4vmin)}
 #scope::before,#scope::after{content:'';position:absolute;background:#000}
 #scope::before{left:0;right:0;top:50%;height:1px}#scope::after{top:0;bottom:0;left:50%;width:1px}
@@ -104,15 +105,9 @@ nav#tabs{display:flex;gap:6px;margin:6px 0 10px}#tabs .btn.on{color:var(--acc);b
 <section class="tab" id="t-weps"></section>
 <section class="tab" id="t-models"><h2>Model library</h2><p>Weapon models named like v_ak47.mdl are matched to their weapon automatically. Change any weapon's model in the buy menu.</p>
 <div><button class="btn" id="addm">Add .mdl files…</button><input type="file" id="mfiles" accept=".mdl" multiple hidden></div><div id="lib" style="margin-top:6px"></div></section>
-<section class="tab" id="t-set"><details class="opt" open><summary>Model packs</summary>
-<p>Pick a folder that contains your packs: <b>[pack_name]/model</b> (v_ak47.mdl …) and <b>[pack_name]/sound</b> (ak47-1.wav …). Each pack is stored separately and you choose which one to use.</p>
-<div id="packs"></div><p><button class="btn p" id="addpack">Add pack folder…</button><input type="file" id="packf" webkitdirectory multiple hidden></p></details>
-<details class="opt" open><summary>Crosshair</summary>
-<label><span>Style</span><select id="xs"><option value="cross">Cross</option><option value="dot">Dot</option><option value="circle">Circle</option></select></label>
-<label><span>Color</span><input type="color" id="xc"></label>
-<label><span>Size</span><input type="range" id="xz" min="2" max="30"></label>
-<label><span>Thickness</span><input type="range" id="xt" min="1" max="6"></label>
-<label><span>Gap</span><input type="range" id="xg" min="0" max="20"></label></details>
+<section class="tab" id="t-set"><div class="stabs"><button data-s="game" class="on">Game</button><button data-s="cross">Crosshair</button><button data-s="models">Model pack</button></div>
+<div class="sp" data-sp="game">
+
 <label><span>Hand</span><select id="hand"><option value="R">Right</option><option value="L">Left</option></select></label>
 <label><span>Sensitivity</span><input type="range" id="sens" min="0.5" max="6" step="0.1"></label>
 <label><span>FOV</span><input type="range" id="fov" min="60" max="110" step="1"></label>
@@ -124,6 +119,20 @@ nav#tabs{display:flex;gap:6px;margin:6px 0 10px}#tabs .btn.on{color:var(--acc);b
 <label><input type="checkbox" id="anames"> Show animation names on screen</label>
 <label><input type="checkbox" id="showfps"> Show FPS</label>
 <label><span>3rd-person dist</span><input type="range" id="tpd" min="40" max="160" step="5"></label>
+</div>
+<div class="sp" data-sp="cross" hidden>
+<label><span>Style</span><select id="xs"><option value="cross">Cross</option><option value="dot">Dot</option><option value="circle">Circle</option></select></label>
+<label><span>Color</span><input type="color" id="xc"></label>
+<label><span>Size</span><input type="range" id="xz" min="2" max="30"></label>
+<label><span>Thickness</span><input type="range" id="xt" min="1" max="6"></label>
+<label><span>Gap</span><input type="range" id="xg" min="0" max="20"></label></div>
+<div class="sp" data-sp="models" hidden><h3 style="margin:4px 0">Model packs</h3>
+<p>Pick a folder that contains your packs: <b>[pack_name]/model</b> (v_ak47.mdl …) and <b>[pack_name]/sound</b> (ak47-1.wav …). Each pack is stored separately and you choose which one to use.</p>
+<div id="packs"></div><p><button class="btn p" id="addpack">Add pack folder…</button><input type="file" id="packf" webkitdirectory multiple hidden></p><h3 style="margin:12px 0 4px">viewmodel_offset</h3>
+<label><span>X (left / right)</span><input type="range" id="vox" min="-10" max="10" step="0.1"><b id="voxn"></b></label>
+<label><span>Y (down / up)</span><input type="range" id="voy" min="-10" max="10" step="0.1"><b id="voyn"></b></label>
+<label><span>Z (back / forward)</span><input type="range" id="voz" min="-10" max="10" step="0.1"><b id="vozn"></b></label>
+<p><button class="btn" id="vor">Reset offset</button></p></div>
 </section>
 <div id="err"></div>
 </div></div>
@@ -136,6 +145,7 @@ let S={slots:[null,null,null,null],map:'arena',hand:'R',sens:2.5,fov:90,auto:tru
 try{Object.assign(S,JSON.parse(localStorage.getItem('gsbhop')||'{}'))}catch(e){}
 if(S.map==='course')S.map='test';
 S.pack=S.pack||'';
+S.vo=Object.assign({x:0,y:0,z:0},S.vo);
 S.xh=Object.assign({style:'cross',color:'#4cff4c',size:8,thick:2,gap:4},S.xh);
 S.gm=Object.assign({bots:5,diff:1,frag:30,time:0,bw:'all',mode:'dm',team:'CT'},S.gm);
 const save=()=>{try{localStorage.setItem('gsbhop',JSON.stringify(S))}catch(e){}};
@@ -883,7 +893,9 @@ function gmRead(){S.gm={mode:$('gx').value,team:$('gy').value,bots:clamp(+$('gb'
 (function(){const g=S.gm;$('gx').value=g.mode;$('gy').value=g.team;$('gb').value=g.bots;$('gd').value=g.diff;$('gw').value=g.bw;$('gf').value=g.frag;$('gt').value=g.time;})();
 $('gx').onchange=()=>{const b=$('gx').value==='bomb';if(b&&!mapIsBomb(S.map))S.map=(lib.find(r=>r.type==='bsp'&&/^de_/i.test(r.name))||{id:'bomb'}).id;else if(!b&&mapIsBomb(S.map))S.map='arena';gmRead();save();renderLib();loadMap();};
 $('go').onclick=async()=>{await ASSETP;await NAVP;gmRead();if(S.gm.mode==='bomb'&&!mapIsBomb(S.map)){err('Bomb Defusal needs a de_ map');return;}FL=S.gm.frag;gmT=S.gm.time*60;P.fr=P.de=0;TSC.T=TSC.CT=0;P.money=800;GN={hegrenade:1,flashbang:2,smokegrenade:1};clearNades();P.hp=100;P.ar=100;P.dead=false;third=false;S.load=S.load.map((x,i)=>x||defLoad()[i]);AM={};reloadT=0;initBots();BM.on=S.gm.mode==='bomb';{const dl=BM.on?[null,P.team==='T'?'glock18':'usp','knife']:defLoad();S.load[0]=dl[0];S.load[1]=dl[1];S.load[2]='knife';applyLoadout();}if(BM.on)startBomb();else restart();inMatch=true;play();};
-const BL=[],PK=[];let bGeo=null,bMat=null,NEAR=null;
+const BL=[],PK=[],SPL=[];let splM=null,splG=null;
+function splat(x,y,z){if(!splM){const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d'),r=g.createRadialGradient(16,16,1,16,16,15);r.addColorStop(0,'#8a0606');r.addColorStop(.6,'#6a0a0aee');r.addColorStop(1,'#0000');g.fillStyle=r;g.fillRect(0,0,32,32);splM=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,fog:false});splG=new THREE.PlaneGeometry(1,1);}
+ const m=new THREE.Mesh(splG,splM),k=5+Math.random()*10;m.scale.set(k,k,1);m.rotation.x=-Math.PI/2;m.rotation.z=Math.random()*6;m.position.set(x,y+.3,z);scene.add(m);SPL.push({m,t:30});if(SPL.length>90)scene.remove(SPL.shift().m);}let bGeo=null,bMat=null,NEAR=null;
 function blood(p,d,n){if(!bGeo){bGeo=new THREE.BoxGeometry(2.2,2.2,2.2);bMat=new THREE.MeshBasicMaterial({color:0xa00808,fog:false});}
  for(let i=0;i<(n||8)*2.2;i++){const m=new THREE.Mesh(bGeo,bMat);m.position.set(p.x,p.y,p.z);scene.add(m);BL.push({m,v:new THREE.Vector3(d.x*130+(Math.random()-.5)*200,d.y*80+Math.random()*150,d.z*130+(Math.random()-.5)*200),t:.6+Math.random()*.6});}}
 const pkTex={};
@@ -891,13 +903,14 @@ function pkLab(n){if(!pkTex[n]){const c=document.createElement('canvas');c.width
  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:pkTex[n],fog:false,transparent:true}));s.scale.set(36,9,1);s.position.y=14;return s;}
 function dropPickup(id,p,v,ammo){const root=new THREE.Group(),g=gunMesh(id);g.scale.setScalar(1.5);g.position.y=3;root.add(g,pkLab(id.toUpperCase()));root.rotation.y=Math.random()*6.28;scene.add(root);
  const k={id,m:root,p:new THREE.Vector3(p.x,p.y,p.z),v:new THREE.Vector3(v.x,v.y,v.z),t:120,ammo,rest:false,cool:0};PK.push(k);return k;}
-function clearPK(){PK.forEach(k=>scene.remove(k.m));PK.length=0;BL.forEach(b=>scene.remove(b.m));BL.length=0;NEAR=null;}
+function clearPK(){PK.forEach(k=>scene.remove(k.m));PK.length=0;BL.forEach(b=>scene.remove(b.m));BL.length=0;SPL.forEach(o=>scene.remove(o.m));SPL.length=0;NEAR=null;}
 function pickGun(k){const slot=WBY[k.id].slot,old=S.load[slot];if(old&&W[old])dropPickup(old,{x:P.p.x,y:P.p.y+10,z:P.p.z},{x:0,y:100,z:0},AM[old]).cool=2;
  S.load[slot]=k.id;AM[k.id]=k.ammo||{m:W[k.id].mag,r:W[k.id].res};slots[slot]=buildWeapon(k.id);scene.remove(k.m);PK.splice(PK.indexOf(k),1);equip(slot);flash('Picked up '+WBY[k.id].name);}
 function usePickup(){if(NEAR&&!P.dead&&PK.includes(NEAR)){pickGun(NEAR);NEAR=null;return true;}return false;}
 function dropGun(){if(P.dead||cs>1)return;const id=S.load[cs];if(!id||!W[id]||!W[id].mag)return;const cp=Math.cos(pitch),d={x:-Math.sin(yaw)*cp,y:Math.sin(pitch),z:-Math.cos(yaw)*cp},
  k=dropPickup(id,{x:P.p.x+d.x*30,y:P.p.y+P.eye-10,z:P.p.z+d.z*30},{x:d.x*260+P.v.x*.5,y:d.y*200+60,z:d.z*260+P.v.z*.5},AM[id]);k.cool=1.5;S.load[cs]=null;slots[cs]=null;setZoom(0);equip(2);flash('Dropped '+WBY[id].name);}
-function pkTick(dt){for(let i=BL.length-1;i>=0;i--){const b=BL[i];b.t-=dt;b.v.y-=700*dt;b.m.position.addScaledVector(b.v,dt);if(b.t<=0){scene.remove(b.m);BL.splice(i,1);}}
+function pkTick(dt){for(let i=BL.length-1;i>=0;i--){const b=BL[i];b.t-=dt;b.v.y-=700*dt;b.m.position.addScaledVector(b.v,dt);const q=b.m.position;if(b.v.y<0){const tr=world.trace(q.x,q.y+4,q.z,q.x,q.y-6,q.z);if(!tr.all&&tr.f<1&&tr.n&&tr.n[1]>.6){splat(q.x,tr.y,q.z);scene.remove(b.m);BL.splice(i,1);continue;}}if(b.t<=0){scene.remove(b.m);BL.splice(i,1);}}
+ for(let i=SPL.length-1;i>=0;i--){SPL[i].t-=dt;if(SPL[i].t<=0){scene.remove(SPL[i].m);SPL.splice(i,1);}}
  let near=null;for(let i=PK.length-1;i>=0;i--){const k=PK[i];k.t-=dt;k.cool-=dt;
   if(!k.rest){const p=k.p,v=k.v;v.y-=800*dt;const tr=world.trace(p.x,p.y,p.z,p.x+v.x*dt,p.y+v.y*dt,p.z+v.z*dt);
    if(tr.f<1&&tr.n){if(tr.n[1]>.7){k.rest=true;p.set(tr.x,tr.y,tr.z);}else{v.x*=-.3;v.z*=-.3;p.set(tr.x+tr.n[0]*.1,tr.y,tr.z+tr.n[2]*.1);}}else if(!tr.all)p.set(tr.x,tr.y,tr.z);k.m.position.copy(p);}
@@ -909,19 +922,26 @@ function applyCross(){const x=S.xh,c=$('cross'),g=+x.gap,L=+x.size,T=+x.thick;c.
  else if(x.style==='circle')h='<i class="xr" style="left:'+(-L)+'px;top:'+(-L)+'px;width:'+L*2+'px;height:'+L*2+'px;border-color:'+x.color+'"></i><i class="xb" style="left:-1px;top:-1px;width:2px;height:2px"></i>';
  else h=[[-g-L,-T/2,L,T],[g,-T/2,L,T],[-T/2,-g-L,T,L],[-T/2,g,T,L]].map(a=>'<i class="xb" style="left:'+a[0]+'px;top:'+a[1]+'px;width:'+a[2]+'px;height:'+a[3]+'px"></i>').join('');c.innerHTML=h;}
 [['xs','style'],['xc','color'],['xz','size'],['xt','thick'],['xg','gap']].forEach(([id,k])=>{const e=$(id);e.value=S.xh[k];e.oninput=()=>{S.xh[k]=e.type==='range'?+e.value:e.value;applyCross();save();};});applyCross();
-const PKM={},PKS={};
-function packIndex(name){for(const k in PKM)delete PKM[k];for(const k in PKS)delete PKS[k];if(!name)return;
+const PKM={},PKS={},CLM={},CLS={};let clDone=false;
+async function loadClassic(){if(clDone)return;const get=async u=>{try{const r=await fetch(u);return r.ok?await r.arrayBuffer():null;}catch(e){return null;}},ws=WEAPONS.filter(w=>w.id!=='armor'),names=new Set();ws.forEach(w=>slotNames(w.id).forEach(n=>names.add(n)));const tot=ws.length+names.size;let done=0;const tk=()=>loadUI('Loading Classic model… '+(++done)+'/'+tot,done/tot);
+ await Promise.all(ws.map(async w=>{const AL={mp5navy:['mp5navy','mp5'],glock18:['glock18','glock']};out:for(const nm of AL[w.id]||[w.id]){const m=await get('classic_model/model/v_'+nm+'.mdl');if(m&&new DataView(m).getInt32(0,true)===0x54534449){CLM[w.id]=m;break out;}}tk();}));
+ await Promise.all([...names].map(async n=>{for(const e of['wav','ogg','mp3']){const b=await get('classic_model/sound/'+n+'.'+e);if(b&&new Uint8Array(b)[0]!==60){CLS[n]=b;break;}}tk();}));clDone=true;}
+async function packLoad(name){if(name==='@classic')await loadClassic();packIndex(name);}
+function packIndex(name){for(const k in PKM)delete PKM[k];for(const k in PKS)delete PKS[k];if(!name)return;if(name==='@classic'){Object.assign(PKM,CLM);Object.assign(PKS,CLS);return;}
  for(const r of lib){if(r.type!=='pk'||r.pk!==name)continue;const base=r.name.replace(/\.\w+$/,'').toLowerCase();if(r.k==='m'){const m=/^v_(.+)$/.exec(base);if(m){const id=ALIAS[m[1]]||m[1];if(WBY[id]&&new DataView(r.data).getInt32(0,true)===0x54534449)PKM[id]=r.data;}}else PKS[base]=r.data;}}
 function packNames(){const m={};for(const r of lib)if(r.type==='pk'){(m[r.pk]=m[r.pk]||{m:0,s:0})[r.k==='m'?'m':'s']++;}return m;}
-function renderPacks(){const L=packNames(),el=$('packs');let h='<div class="li'+(S.pack?'':' on')+'" data-p=""><span>Default (model/ and sound/ folders)</span><small>host</small></div>';
+function renderPacks(){const L=packNames(),el=$('packs');let h='<div class="li'+(S.pack?'':' on')+'" data-p=""><span>Default (model/ and sound/ folders)</span><small>host</small></div><div class="li'+(S.pack==='@classic'?' on':'')+'" data-p="@classic"><span>Classic model</span><small>classic_model/model · classic_model/sound'+(clDone?' · '+Object.keys(CLM).length+' models, '+Object.keys(CLS).length+' sounds':'')+'</small></div>';
  for(const n in L)h+='<div class="li'+(S.pack===n?' on':'')+'" data-p="'+esc(n)+'"><span>'+esc(n)+'</span><small>'+L[n].m+' models · '+L[n].s+' sounds</small><button class="x" data-d="'+esc(n)+'" title="Delete pack">✕</button></div>';
  el.innerHTML=h;el.querySelectorAll('[data-p]').forEach(d=>d.onclick=()=>usePack(S.pack===d.dataset.p?'':d.dataset.p));el.querySelectorAll('[data-d]').forEach(b=>b.onclick=async e=>{e.stopPropagation();await delPack(b.dataset.d);});}
-async function usePack(n){loadUI('Loading pack…',.3);await new Promise(r=>setTimeout(r,30));S.pack=n||'';packIndex(S.pack);bufs.clear();loadUI('Building weapon models…',.7);await applyLoadout();save();renderPacks();renderWeps();loadDone();}
+async function usePack(n){loadUI('Loading pack…',.3);await new Promise(r=>setTimeout(r,30));S.pack=n||'';await packLoad(S.pack);bufs.clear();loadUI('Building weapon models…',.7);await applyLoadout();save();renderPacks();renderWeps();loadDone();}
 async function delPack(n){for(const r of lib.filter(x=>x.type==='pk'&&x.pk===n))await libDel(r.id);if(S.pack===n)await usePack('');else renderPacks();}
 async function importPacks(files){const gr={};for(const f of files){const ps=(f.webkitRelativePath||f.name).split('/'),mi=ps.indexOf('model'),si=ps.indexOf('sound'),idx=mi>=0?mi:si;if(idx<0)continue;const k=mi>=0?'m':'s';if(k==='m'&&!/\.mdl$/i.test(f.name)||k==='s'&&!/\.(wav|mp3|ogg)$/i.test(f.name))continue;const pk=idx>0?ps[idx-1]:'Imported';(gr[pk]=gr[pk]||[]).push([f,k]);}
  const names=Object.keys(gr);if(!names.length){err('No [pack]/model or [pack]/sound folders found');return;}const tot=names.reduce((q,n)=>q+gr[n].length,0);let done=0;
  for(const n of names)for(const[f,k]of gr[n]){loadUI('Importing pack '+n+'… '+(++done)+'/'+tot,done/tot);await libAdd(f.name,'pk',await f.arrayBuffer(),{pk:n,k});}
- S.pack=names[0];packIndex(S.pack);bufs.clear();loadUI('Building weapon models…',1);await applyLoadout();save();renderPacks();renderWeps();loadDone();err(names.length+' pack(s) added');}
+ S.pack=names[0];await packLoad(S.pack);bufs.clear();loadUI('Building weapon models…',1);await applyLoadout();save();renderPacks();renderWeps();loadDone();err(names.length+' pack(s) added');}
+document.querySelectorAll('.stabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.stabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('#t-set .sp').forEach(d=>d.hidden=d.dataset.sp!==b.dataset.s);});
+[['vox','x'],['voy','y'],['voz','z']].forEach(([id,k])=>{const e=$(id),n=$(id+'n');e.value=S.vo[k];n.textContent=(+S.vo[k]).toFixed(1);e.oninput=()=>{S.vo[k]=+e.value;n.textContent=(+e.value).toFixed(1);save();};});
+$('vor').onclick=()=>{S.vo={x:0,y:0,z:0};[['vox','x'],['voy','y'],['voz','z']].forEach(([id,k])=>{$(id).value=0;$(id+'n').textContent='0.0';});save();};
 $('addpack').onclick=()=>$('packf').click();$('packf').onchange=e=>{const l=[...e.target.files];e.target.value='';importPacks(l);};
 /* ---------- Loop ---------- */
 function resize(){const w=innerWidth,h=innerHeight;R.setPixelRatio(S.style==='retro'?S.scale:Math.min(devicePixelRatio,2));R.setSize(w,h,false);
@@ -941,11 +961,11 @@ function tick(now){requestAnimationFrame(tick);
  animHuman(PH,P.dead?0:Math.hypot(P.v.x,P.v.z),dt,P.duck&&!P.dead);if(P.dead){P.dt=(P.dt||0)+dt;const u=Math.min(1,P.dt/.6),e=1-(1-u)*(1-u);pv.rotation.order='YXZ';pv.rotation.y=P.dyaw;pv.rotation.x=e*1.5;pv.position.y=p.y+6*e;PH.lA.rotation.x=1.05+e*1.1;PH.rA.rotation.x=1.4+e*.6;PH.lL.rotation.x=0;PH.rL.rotation.x=.3*e;}else pv.rotation.x=0;if(pm)animPlayer(pm,sp,dt);
  vwrap.visible=!third&&!zoomFov;if(zoomFov&&cam.fov!==zoomFov){cam.fov=zoomFov;cam.updateProjectionMatrix();}else if(!zoomFov&&cam.fov!==S.fov){cam.fov=S.fov;cam.updateProjectionMatrix();}
  bs+=((S.bob&&P.g?Math.min(sp/MAXS,1):0)-bs)*Math.min(1,dt*10);const tt=now/1000;
- vwrap.position.set(Math.sin(tt*7)*0.35*bs,-Math.abs(Math.sin(tt*7))*0.5*bs-silP()*5-1.6,0),vwrap.rotation.z=silP()*.5;
+ vwrap.position.set(Math.sin(tt*7)*0.35*bs+S.vo.x,-Math.abs(Math.sin(tt*7))*0.5*bs-silP()*5-1.6+S.vo.y,S.vo.z),vwrap.rotation.z=silP()*.5;
  if(mh&&playing)act('shoot',1);if(mh2&&playing&&S.load[cs]==='knife')stab();if(vm)vm.update(dt);
  $('spd').firstChild.nodeValue=Math.round(sp);$('tm').textContent=fmt(P.t)+'  jumps '+P.jumps;
  dome.position.copy(cam.position);if(!document.body.classList.contains('mainscr')){R.clear();R.render(scene,cam);R.clearDepth();R.render(vs,vcam);}}
-(async()=>{await libLoad();syncMode();showHome();renderLib();applyUI();await loadMap();packIndex(S.pack);await applyLoadout();renderLib();requestAnimationFrame(tick);renderPacks();ASSETP=autoAssets().then(loadDone,loadDone);})();
+(async()=>{await libLoad();syncMode();showHome();renderLib();applyUI();await loadMap();await packLoad(S.pack);await applyLoadout();renderLib();requestAnimationFrame(tick);renderPacks();ASSETP=autoAssets().then(loadDone,loadDone);})();
 </script>
 </body>
 </html>
