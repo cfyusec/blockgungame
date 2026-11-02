@@ -106,6 +106,7 @@ nav#tabs{display:flex;gap:6px;margin:6px 0 10px}#tabs .btn.on{color:var(--acc);b
 <label><span>Name</span><input id="mpn" maxlength="14" value="Player"></label>
 <p><button class="btn p" id="mpc">Create Room</button></p>
 <p><input id="mpj" maxlength="4" placeholder="CODE" style="width:84px;text-transform:uppercase"> <button class="btn" id="mpg">Join Room</button></p>
+<h3 style="margin:8px 0 4px">Room list</h3><div id="mprooms"></div>
 <p id="mpst">Not connected.</p><div id="mplist"></div>
 <p><button class="btn p" id="mps" hidden>Start Match (host)</button> <button class="btn" id="mpl" hidden>Leave Room</button></p></section>
 <section class="tab" id="t-weps"></section>
@@ -144,7 +145,7 @@ nav#tabs{display:flex;gap:6px;margin:6px 0 10px}#tabs .btn.on{color:var(--acc);b
 </div></div>
 <div id="buy"><div class="bw"><div id="bl"></div><div id="br"></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $=i=>document.getElementById(i),clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -561,7 +562,7 @@ function play(){
 }
 let inMatch=false;
 function showHome(){const m=$('menu');document.body.classList.toggle('mainscr',!inMatch);m.classList.add('home');m.style.display='flex';const L=$('mlist');L.innerHTML='';
- (inMatch?[['Resume',play],['Settings',()=>panel('set','Settings')],['Models',()=>panel('models','Models')],['Leave',leaveMatch]]:[['New Game',()=>panel('play','New Game')],['Models',()=>panel('models','Models')],['Multiplayer',()=>panel('mp','Multiplayer')],['Map files',()=>panel('maps','Map files')],['Settings',()=>panel('set','Settings')]])
+ (inMatch?[['Resume',play],['Settings',()=>panel('set','Settings')],['Models',()=>panel('models','Models')],['Leave',leaveMatch]]:[['New Game',()=>panel('play','New Game')],['Models',()=>panel('models','Models')],['Multiplayer',()=>{panel('mp','Multiplayer');mpList();}],['Map files',()=>panel('maps','Map files')],['Settings',()=>panel('set','Settings')]])
  .forEach(([n,f])=>{const d=document.createElement('div');d.className='mi';d.textContent=n;d.onclick=f;L.appendChild(d);});}
 function panel(t,n){document.body.classList.toggle('mainscr',!inMatch);$('menu').classList.remove('home');$('bname').textContent=n;if(t==='models'){showTab('weps');$('t-models').style.display='block';}else showTab(t);}
 function leaveMatch(){inMatch=false;netLeave(true);BM.on=false;clearBomb();third=false;P.dead=false;setZoom(0);clearNades();for(const b of bots)scene.remove(b.m);bots=[];showHome();}
@@ -950,65 +951,293 @@ document.querySelectorAll('.stabs button').forEach(b=>b.onclick=()=>{document.qu
 [['vox','x'],['voy','y'],['voz','z']].forEach(([id,k])=>{const e=$(id),n=$(id+'n');e.value=S.vo[k];n.textContent=(+S.vo[k]).toFixed(1);e.oninput=()=>{S.vo[k]=+e.value;n.textContent=(+e.value).toFixed(1);save();};});
 $('vor').onclick=()=>{S.vo={x:0,y:0,z:0};[['vox','x'],['voy','y'],['voz','z']].forEach(([id,k])=>{$(id).value=0;$(id+'n').textContent='0.0';});save();};
 $('addpack').onclick=()=>$('packf').click();$('packf').onchange=e=>{const l=[...e.target.files];e.target.value='';importPacks(l);};
-/* ================= Online multiplayer (Socket.io) ================= */
-const SERVER_URL='';   // ''  = same origin as the page (game served by server.js).  Or e.g. 'https://my-game.onrender.com'
-let NET=null,ONL=false,ME=null,ROOM='',ISHOST=false,RCFG=null,RS=[],MYTEAM='p';const RPL=new Map(),RPLIST=()=>[...RPL.values()];
+/* ================= Online multiplayer (Supabase Realtime - no server needed) ================= */
+const SUPABASE_URL = 'https://tujgyvpvpogzvrfpjzi.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7tNaSOCwlks2GGC2kewyYg_mxxSCSpK';
+// Đổi tên biến thành db để không bị đụng hàng với biến global của CDN
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const NET_HZ = 20;
+let DB=null,ONL=false,ME='',ROOM='',ISHOST=false,RCFG=null,RS=[],MYTEAM='p',RR=null,EVK='';const RPL=new Map(),RPLIST=()=>[...RPL.values()],unsub=[],q1=v=>Math.round(v*10)/10;
 const mpSt=t=>{$('mpst').textContent=t;};
-function mpRender(){const L=$('mplist');if(!ROOM){L.innerHTML='';$('mps').hidden=$('mpl').hidden=true;return;}
- L.innerHTML='<p>Room code: <b style="font-size:22px;color:var(--acc)">'+ROOM+'</b> · '+(RCFG?RCFG.mode.toUpperCase()+' · '+RCFG.map:'')+'</p>'+RS.map(p=>'<div class="li"><span>'+esc(p.name)+(p.id===ME?' (you)':'')+(p.id===(NET&&NET.hostId)?' ★':'')+'</span><small>'+p.team+' · '+p.k+'/'+p.d+'</small></div>').join('');
- $('mps').hidden=!ISHOST||ONL;$('mpl').hidden=false;}
-function mpConnect(){if(NET&&NET.connected)return NET;if(typeof io==='undefined'){mpSt('Socket.io client not loaded – open the game through your Node server.');return null;}
- if(NET){NET.connect();return NET;}
- NET=io(SERVER_URL||undefined,{transports:['websocket','polling']});
- NET.on('connect_error',()=>mpSt('Cannot reach the server.'));
- NET.on('disconnect',()=>{mpSt('Disconnected from server.');netLeave(false);});
- NET.on('peer-join',p=>{RS=RS.filter(x=>x.id!==p.id).concat(p);addRemote(p);mpRender();});
- NET.on('peer-leave',p=>{removeRemote(p.id);RS=RS.filter(x=>x.id!==p.id);mpRender();});
- NET.on('host',h=>{NET.hostId=h.id;ISHOST=h.id===ME;mpRender();});
- NET.on('cfg',c=>{RCFG=c;mpRender();});
- NET.on('scores',l=>{RS=l;for(const p of l){const r=RPL.get(p.id);if(r){r.team=teamFor(p);r.fr=p.k;}}mpRender();});
- NET.on('start',d=>{RCFG=d.cfg;startOnline(d.cfg,d.teams[ME]||'CT');});
- NET.on('snap',a=>{for(const s of a){if(s.id===ME)continue;const r=RPL.get(s.id);if(!r)continue;r.tx=s.x;r.ty=s.y;r.tz=s.z;r.tyaw=s.yaw;r.pitch=s.pitch;r.duck=!!s.duck;if(s.w&&s.w!==r.w){r.w=s.w;if(W[s.w])setGun(r.H,s.w);}
-   if(!r.has){r.has=true;r.p.set(s.x,s.y,s.z);r.yaw=s.yaw;}}});
- NET.on('shoot',s=>{const r=RPL.get(s.id);if(!r||r.dead||!world)return;const o={x:s.o[0],y:s.o[1],z:s.o[2]},d={x:s.d[0],y:s.d[1],z:s.d[2]},t=wallT(o,d,3000);
-   tracer({x:o.x+d.x*40,y:o.y-3+d.y*40,z:o.z+d.z*40},{x:o.x+d.x*t,y:o.y+d.y*t,z:o.z+d.z*t},0xff6a5a);if(Math.hypot(o.x-P.p.x,o.z-P.p.z)<1800)playSnd(s.w,'fire');});
- NET.on('hp',h=>{if(h.id===ME){P.hp=h.hp;P.ar=h.ar;const e=$('hit');e.style.opacity=1;setTimeout(()=>e.style.opacity=0,120);const a=RPL.get(h.by);if(a)blood({x:P.p.x,y:P.p.y+45,z:P.p.z},{x:P.p.x-a.p.x,y:.2,z:P.p.z-a.p.z},8);}
-   else{const r=RPL.get(h.id);if(r){r.hp=h.hp;if(h.by!==ME)blood({x:r.p.x,y:r.p.y+45,z:r.p.z},{x:0,y:.3,z:0},8);}}});
- NET.on('death',d=>{const k=d.by===ME?{n:'You',fr:0,team:P.team}:RPL.get(d.by)||{n:'Someone',fr:0,team:'x'};
-   if(d.id===ME){kill(k,P,d.w,d.h);P.rt=1e9;}
-   else{const r=RPL.get(d.id);if(r){r.dead=true;r.dt=0;r.gy=r.p.y;r.np.visible=false;}if(d.by===ME){P.money=Math.min(16000,P.money+300);P.fr++;flash('You killed '+(r?r.n:'a player')+(d.h?' ★ headshot':'')+' +$300',1800);}}});
- NET.on('respawn',d=>{if(d.id===ME)netRespawn();else{const r=RPL.get(d.id);if(r){r.dead=false;r.hp=100;r.m.rotation.x=0;r.has=false;}}});
- NET.on('win',w=>{flash((w.id===ME||(w.mode==='tdm'&&w.team===MYTEAM)?'YOU WIN':'YOU LOSE')+' · scores reset',4000);P.fr=P.de=0;});
- return NET;}
-const teamFor=p=>RCFG&&RCFG.mode==='tdm'?p.team:'r'+p.id;
-function addRemote(p){if(RPL.has(p.id)||p.id===ME)return;const tdm=RCFG&&RCFG.mode==='tdm',H=mkHuman(tdm?(p.team==='T'?0xb5651d:0x3a6ab0):[0x7a3a3a,0x3a6a4a,0x3a4a8a,0x8a6a2a,0x6a3a7a][RPL.size%5]),g=H.g;g.rotation.order='YXZ';g.visible=false;scene.add(g);
- const npc=document.createElement('canvas');npc.width=128;npc.height=36;const np=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(npc),fog:false,transparent:true}));np.scale.set(52,15,1);np.position.set(0,88,0);np.visible=false;g.add(np);
- RPL.set(p.id,{net:true,id:p.id,n:p.name,team:teamFor(p),H,m:g,p:new THREE.Vector3(),tx:0,ty:0,tz:0,yaw:0,tyaw:0,pitch:0,dead:false,duck:false,w:'',hp:100,np,npc,fr:0,has:false,dt:0,gy:0});}
-function removeRemote(id){const r=RPL.get(id);if(r){scene.remove(r.m);RPL.delete(id);}}
-function clearRemotes(){for(const r of RPL.values())scene.remove(r.m);RPL.clear();}
-function rpTick(dt){if(!ONL)return;for(const r of RPL.values()){if(!r.has){r.m.visible=false;continue;}r.m.visible=true;
-  if(r.dead){r.dt+=dt;const u=Math.min(1,r.dt/.6),e=1-(1-u)*(1-u);r.m.rotation.x=e*1.5;r.m.position.set(r.p.x,r.gy+6*e,r.p.z);r.H.lA.rotation.x=1.05+e*1.1;r.H.rA.rotation.x=1.4+e*.6;r.H.lL.rotation.x=0;r.H.rL.rotation.x=.3*e;continue;}
-  const k=Math.min(1,dt*14),ox=r.p.x,oz=r.p.z;r.p.x+=(r.tx-r.p.x)*k;r.p.y+=(r.ty-r.p.y)*k;r.p.z+=(r.tz-r.p.z)*k;
-  let df=r.tyaw-r.yaw;df=Math.atan2(Math.sin(df),Math.cos(df));r.yaw+=df*Math.min(1,dt*16);r.m.rotation.y=r.yaw;
-  const sp=Math.hypot(r.p.x-ox,r.p.z-oz)/Math.max(dt,.001),fw=-Math.sin(r.yaw)*(r.p.x-ox)-Math.cos(r.yaw)*(r.p.z-oz);
-  animHuman(r.H,Math.min(sp,320)*(fw<-.2?-1:1),dt,r.duck);r.H.head.rotation.x=-r.pitch*.6;r.m.position.set(r.p.x,r.p.y,r.p.z);r.hp=r.hp===undefined?100:r.hp;updNP(r);}}
-function netTick(){if(!ONL||!NET||!NET.connected||!inMatch)return;NET.volatile.emit('state',{x:P.p.x,y:P.p.y,z:P.p.z,yaw,pitch,duck:P.duck?1:0,w:S.load[cs]||'',dead:P.dead?1:0});}
-setInterval(netTick,33);
-function netShoot(o,d,id){if(ONL&&NET)NET.volatile.emit('shoot',{o:[o.x,o.y,o.z],d:[d.x,d.y,d.z],w:id});}
-function netHit(b,dm,ar,g,id){if(ONL&&NET)NET.emit('hit',{t:b.id,d:dm,ar,g,w:id});const c=$('cross');c.classList.add('hm');setTimeout(()=>c.classList.remove('hm'),90);}
-function meleeNet(d,r){const f={x:-Math.sin(yaw),z:-Math.cos(yaw)};for(const b of RPLIST()){if(b.dead||(RCFG&&RCFG.mode==='tdm'&&b.team===P.team))continue;const dx=b.p.x-P.p.x,dz=b.p.z-P.p.z,L=Math.hypot(dx,dz);if(L<(r||64)&&(dx*f.x+dz*f.z)/(L||1)>.4&&Math.abs(b.p.y-P.p.y)<60){blood({x:b.p.x,y:b.p.y+45,z:b.p.z},{x:f.x,y:.3,z:f.z},10);netHit(b,d,1,'c','knife');}}}
-function netRespawn(){P.hp=100;P.ar=100;P.dead=false;third=false;S.load=S.load.map((x,i)=>x||defLoad()[i]);AM={};GN={hegrenade:1,flashbang:2,smokegrenade:1};reloadT=0;punch=punchY=0;applyLoadout();restart(true);}
-async function startOnline(cfg,team){ONL=true;MYTEAM=cfg.mode==='tdm'?team:'p';S.map=cfg.map;S.gm=Object.assign(S.gm,{mode:cfg.mode,bots:0,team:team,frag:cfg.frag||30});save();loadUI('Joining match…',.5);
- await loadMap();await NAVP;await ASSETP;FL=S.gm.frag;P.fr=P.de=0;TSC.T=TSC.CT=0;P.money=800;GN={hegrenade:1,flashbang:2,smokegrenade:1};clearNades();P.hp=100;P.ar=100;P.dead=false;third=false;AM={};reloadT=0;
- initBots();BM.on=false;const dl=defLoad();S.load[0]=dl[0];S.load[1]=dl[1];S.load[2]='knife';await applyLoadout();
- for(const p of RS){const r=RPL.get(p.id);if(r)r.team=teamFor(p);}restart();inMatch=true;loadDone();mpRender();play();}
-function netLeave(emit){if(emit&&NET&&NET.connected)NET.emit('leave');ONL=false;ROOM='';ISHOST=false;RS=[];RCFG=null;clearRemotes();mpRender();}
-function netHud(){return'\nROOM '+ROOM+' · '+RS.slice().sort((a,b)=>b.k-a.k).slice(0,4).map(p=>p.name+' '+p.k+'/'+p.d).join(' | ');}
-function mpEnter(r){if(!r.ok){mpSt(r.error||'Failed');return;}ME=r.id;ROOM=r.code;NET.hostId=r.host;ISHOST=r.host===ME;RCFG=r.cfg;MYTEAM=r.team;RS=r.players.concat({id:ME,name:$('mpn').value||'Player',team:r.team,k:0,d:0});
- clearRemotes();for(const p of r.players)addRemote(p);mpSt('In room '+r.code+(ISHOST?' – you are the host.':' – waiting for the host to start.'));mpRender();if(r.started)startOnline(r.cfg,r.team);}
-$('mpc').onclick=()=>{if(!mpConnect())return;const m=(MAPS[S.map]&&S.map!=='bomb'&&S.map!=='train')||S.map==='test'?S.map:'arena';NET.emit('create',{name:$('mpn').value,cfg:{map:m,mode:S.gm.mode==='tdm'?'tdm':'dm',frag:S.gm.frag}},mpEnter);};
-$('mpg').onclick=()=>{if(!mpConnect())return;const c=$('mpj').value.trim().toUpperCase();if(c.length<4){mpSt('Enter the 4-letter room code.');return;}NET.emit('join',{name:$('mpn').value,code:c},mpEnter);};
-$('mps').onclick=()=>{if(NET)NET.emit('start');};$('mpl').onclick=()=>{netLeave(true);mpSt('Left the room.');};
+const hostOf=()=>RS.slice().sort((a,b)=>(a.j||0)-(b.j||0))[0];
+
+function mpRender(){
+  const L=$('mplist');
+  if(!ROOM){L.innerHTML='';$('mps').hidden=$('mpl').hidden=true;return;}
+  const h=hostOf();
+  L.innerHTML='<p>Room code: <b style="font-size:22px;color:var(--acc)">'+ROOM+'</b> · '+(RCFG?RCFG.mode.toUpperCase()+' · '+RCFG.map:'')+'</p>'+RS.map(p=>'<div class="li"><span>'+esc(p.name)+(p.id===ME?' (you)':'')+(h&&p.id===h.id?' ★':'')+'</span><small>'+p.team+' · '+p.k+'/'+p.d+'</small></div>').join('');
+  $('mps').hidden=!ISHOST||ONL;$('mpl').hidden=false;
+}
+
+function fbInit(){ return supabase; }
+
+async function mpList(){
+  const { data, error } = await db.from('rooms').select('*').limit(30);
+  if (error) { mpSt('Lỗi tải danh sách phòng'); return; }
+  const L = $('#mprooms'); L.innerHTML = '';
+  (data || []).forEach(r => {
+    const e = document.createElement('div'); e.className = 'li';
+    e.innerHTML = `<span>${esc(r.id)}</span> - <span>${esc(r.cfg?.mode?.toUpperCase() || '')}</span> - <span>${esc(r.cfg?.map || '')}</span>`;
+    e.onclick = () => mpJoin(r.id);
+    L.appendChild(e);
+  });
+}
+
+async function mpCreate(){
+  const code = Array.from({length:4}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
+  if (!ME) ME = 'u_' + Math.random().toString(36).substring(2, 8);
+  
+  const playerName = ($('mpn').value||'Player').replace(/[^\w \-.]/g,'').slice(0,14)||(S.name||'Player');
+  const defaultPlayers = {};
+  defaultPlayers[ME] = { name: playerName, team: 'p', k: 0, d: 0, hp: 100, ar: 100, j: Date.now() };
+
+  const { error } = await db.from('rooms').insert([{ 
+    id: code, 
+    cfg: S.gm, 
+    started: false, 
+    players: defaultPlayers,
+    state: {},
+    events: []
+  }]);
+  
+  if (error) { 
+    mpSt('Could not create – try again.'); 
+    return; 
+  }
+  mpEnter(code, S.gm, defaultPlayers, true);
+}
+
+async function mpJoin(code){
+  code = String(code || $('mpj').value).trim().toUpperCase();
+  if(!code) { mpSt('Room not found.'); return; }
+  if (!ME) ME = 'u_' + Math.random().toString(36).substring(2, 8);
+  
+  const { data, error } = await db.from('rooms').select('*').eq('id', code).single();
+  if (error || !data) { 
+    mpSt('Room not found.'); 
+    return; 
+  }
+  
+  let players = data.players || {};
+  if(Object.keys(players).length >= 10){ 
+    mpSt('Room is full.'); 
+    return; 
+  }
+  
+  let t=0, c=0;
+  for(const k in players) players[k].team==='T'?t++:c++;
+  const tdm = data.cfg.mode === 'tdm';
+  MYTEAM = tdm ? (t <= c ? 'T' : 'CT') : 'p';
+
+  const playerName = ($('mpn').value||'Player').replace(/[^\w \-.]/g,'').slice(0,14)||(S.name||'Player');
+  players[ME] = { name: playerName, team: MYTEAM, k: 0, d: 0, hp: 100, ar: 100, j: Date.now() };
+
+  await db.from('rooms').update({ players }).eq('id', code);
+  mpEnter(code, data.cfg, players, false);
+}
+
+async function mpEnter(code, cfg, players, isHost){
+  ROOM = code;
+  RCFG = cfg;
+  ISHOST = isHost;
+  ONL = true;
+  
+  RS = Object.keys(players).map(k => ({ id: k, ...players[k] }));
+  mpRender();
+  mpSt('In room '+code+' – '+(ISHOST?'you are the host.':'waiting for the host.'));
+
+  if(window.roomChannel) {
+    db.removeChannel(window.roomChannel);
+  }
+
+  window.roomChannel = db.channel('room_' + code)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${code}` }, payload => {
+      const updated = payload.new;
+      if(!updated) return;
+      
+      if(updated.players) {
+        RS = Object.keys(updated.players).map(k => ({ id: k, ...updated.players[k] }));
+        for(const p of RS){
+          if(p.id===ME) continue;
+          if(!RPL.has(p.id)) addRemote(p);
+          const r = RPL.get(p.id);
+          if(r) {
+            r.n = p.name;
+            r.team = teamFor(p);
+            r.hp = p.hp;
+            r.fr = p.k;
+          }
+        }
+        for(const id of [...RPL.keys()]) {
+          if(!updated.players[id]) removeRemote(id);
+        }
+        const h = hostOf();
+        ISHOST = !!h && h.id === ME;
+        mpRender();
+      }
+
+      if(updated.started && !ONL) {
+        startOnline(RCFG, MYTEAM);
+      }
+    })
+    .subscribe();
+}
+
+function onState(s){}
+
+const evSend = async (o) => {
+  if(!ROOM) return;
+  const { data } = await db.from('rooms').select('events').eq('id', ROOM).single();
+  const evs = data?.events || [];
+  evs.push(Object.assign({ f: ME, time: Date.now() }, o));
+  if(evs.length > 50) evs.shift();
+  await db.from('rooms').update({ events: evs }).eq('id', ROOM);
+};
+
+const teamFor = p => RCFG && RCFG.mode === 'tdm' ? p.team : 'r' + p.id;
+
+function addRemote(p){
+  if(RPL.has(p.id) || p.id === ME) return;
+  const tdm = RCFG && RCFG.mode === 'tdm', H = mkHuman(tdm ? (p.team === 'T' ? 0xb5651d : 0x3a6ab0) : [0x7a3a3a, 0x3a6a4a, 0x3a4a8a, 0x8a6a2a, 0x6a3a7a][RPL.size % 5]), g = H.g;
+  g.rotation.order = 'YXZ'; g.visible = false; scene.add(g);
+  const npc = document.createElement('canvas'); npc.width = 128; npc.height = 36;
+  const np = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(npc), fog: false, transparent: true}));
+  np.scale.set(52, 15, 1); np.position.set(0, 88, 0); np.visible = false; g.add(np);
+  RPL.set(p.id, {net: true, id: p.id, n: p.name, team: teamFor(p), H, m: g, p: new THREE.Vector3(), tx: 0, ty: 0, tz: 0, yaw: 0, tyaw: 0, pitch: 0, dead: false, duck: false, w: '', hp: 100, np, npc, fr: 0, has: false, dt: 0, gy: 0});
+}
+
+function removeRemote(id){ const r = RPL.get(id); if(r){ scene.remove(r.m); RPL.delete(id); } }
+function clearRemotes(){ for(const r of RPL.values()) scene.remove(r.m); RPL.clear(); }
+
+function rpTick(dt){
+  if(!ONL) return;
+  for(const r of RPL.values()){
+    if(!r.has){ r.m.visible = false; continue; }
+    r.m.visible = true;
+    if(r.dead){
+      r.dt += dt; const u = Math.min(1, r.dt / .6), e = 1 - (1 - u) * (1 - u);
+      r.m.rotation.x = e * 1.5; r.m.position.set(r.p.x, r.gy + 6 * e, r.p.z);
+      r.H.lA.rotation.x = 1.05 + e * 1.1; r.H.rA.rotation.x = 1.4 + e * .6; r.H.lL.rotation.x = 0; r.H.rL.rotation.x = .3 * e; continue;
+    }
+    const k = Math.min(1, dt * 14), ox = r.p.x, oz = r.p.z;
+    r.p.x += (r.tx - r.p.x) * k; r.p.y += (r.ty - r.p.y) * k; r.p.z += (r.tz - r.p.z) * k;
+    let df = r.tyaw - r.yaw; df = Math.atan2(Math.sin(df), Math.cos(df)); r.yaw += df * Math.min(1, dt * 16); r.m.rotation.y = r.yaw;
+    const sp = Math.hypot(r.p.x - ox, r.p.z - oz) / Math.max(dt, .001), fw = -Math.sin(r.yaw) * (r.p.x - ox) - Math.cos(r.yaw) * (r.p.z - oz);
+    animHuman(r.H, Math.min(sp, 320) * (fw < -.2 ? -1 : 1), dt, r.duck); r.H.head.rotation.x = -r.pitch * .6; r.m.position.set(r.p.x, r.p.y, r.p.z); r.hp = r.hp === undefined ? 100 : r.hp; updNP(r);
+  }
+}
+
+function meleeNet(d, r){
+  const f = {x: -Math.sin(yaw), z: -Math.cos(yaw)};
+  for(const b of RPLIST()){
+    if(b.dead || (RCFG && RCFG.mode === 'tdm' && b.team === P.team)) continue;
+    const dx = b.p.x - P.p.x, dz = b.p.z - P.p.z, L = Math.hypot(dx, dz);
+    if(L < (r || 64) && (dx * f.x + dz * f.z) / (L || 1) > .4 && Math.abs(b.p.y - P.p.y) < 60){
+      blood({x: b.p.x, y: b.p.y + 45, z: b.p.z}, {x: f.x, y: .3, z: f.z}, 10);
+      netHit(b, d, 1, 'c', 'knife');
+    }
+  }
+}
+
+function netRespawn(){
+  P.hp = 100; P.ar = 100; P.dead = false; third = false;
+  S.load = S.load.map((x, i) => x || defLoad()[i]); AM = {}; GN = {hegrenade: 1, flashbang: 2, smokegrenade: 1};
+  reloadT = 0; punch = punchY = 0; applyLoadout(); restart(true);
+}
+
+function netTick(){
+  if(!ONL || !ROOM || !inMatch) return;
+}
+setInterval(netTick, 1000 / NET_HZ);
+
+function netShoot(o, d, id){ if(ONL) evSend({t: 's', o: [q1(o.x), q1(o.y), q1(o.z)], d: [+d.x.toFixed(3), +d.y.toFixed(3), +d.z.toFixed(3)], w: id}); }
+function netHit(b, dm, ar, g, id){
+  if(ONL) evSend({t: 'h', to: b.id, d: Math.round(dm), ar, g, w: id});
+  const c = $('cross'); c.classList.add('hm'); setTimeout(() => c.classList.remove('hm'), 90);
+}
+
+async function takeHit(e){
+  if(P.dead || !ONL) return;
+  const a = RPL.get(e.f);
+  if(RCFG.mode === 'tdm' && a && a.team === P.team) return;
+  let dmg = Math.min(200, Math.max(0, +e.d || 0)) * ({h: 4, c: 1, s: 1.25, l: .75}[e.g] || 1);
+  const ratio = Math.min(2, Math.max(.5, +e.ar || 1));
+  if(P.ar > 0 && e.g !== 'l'){
+    const n = dmg * ratio * .5, x = (dmg - n) * .5;
+    if(x > P.ar){ dmg -= P.ar * 2; P.ar = 0; } else { P.ar -= x; dmg = n; }
+  }
+  P.hp -= Math.round(dmg);
+  const h = $('hit'); h.style.opacity = 1; setTimeout(() => h.style.opacity = 0, 120);
+  if(a) blood({x: P.p.x, y: P.p.y + 45, z: P.p.z}, {x: P.p.x - a.p.x, y: .2, z: P.p.z - a.p.z}, 8);
+  
+  if(P.hp <= 0){
+    kill(a || {n: 'Someone', fr: 0, team: 'x'}, P, e.w, e.g === 'h');
+    P.rt = 1e9;
+    evSend({t: 'd', id: ME, by: e.f, w: e.w, h: e.g === 'h'});
+    setTimeout(() => { if(!ONL) return; netRespawn(); evSend({t: 'r', id: ME}); }, 3000);
+  }
+}
+
+function onEv(e){
+  if(!e || !ONL) return;
+  if(e.t === 's'){
+    const r = RPL.get(e.f); if(!r || r.dead || !world) return;
+    const o = {x: e.o[0], y: e.o[1], z: e.o[2]}, d = {x: e.d[0], y: e.d[1], z: e.d[2]}, t = wallT(o, d, 3000);
+    tracer({x: o.x + d.x * 40, y: o.y - 3 + d.y * 40, z: o.z + d.z * 40}, {x: o.x + d.x * t, y: o.y + d.y * t, z: o.z + d.z * t}, 0xff6a5a);
+    if(Math.hypot(o.x - P.p.x, o.z - P.p.z) < 1800) playSnd(e.w, 'fire');
+  } else if(e.t === 'h'){
+    if(e.to === ME) takeHit(e);
+    else { const r = RPL.get(e.to); if(r && e.f !== ME) blood({x: r.p.x, y: r.p.y + 45, z: r.p.z}, {x: 0, y: .3, z: 0}, 8); }
+  } else if(e.t === 'd'){
+    if(e.id === ME) return;
+    const r = RPL.get(e.id); if(r){ r.dead = true; r.dt = 0; r.gy = r.p.y; r.np.visible = false; }
+    if(e.by === ME){
+      P.money = Math.min(16000, P.money + 300); P.fr++;
+      flash('You killed ' + (r ? r.n : 'a player') + (e.h ? ' ★ headshot' : '') + ' +$300', 1800);
+    }
+  } else if(e.t === 'r'){
+    const r = RPL.get(e.id); if(r){ r.dead = false; r.hp = 100; r.m.rotation.x = 0; r.has = false; }
+  }
+}
+
+async function startOnline(cfg, team){
+  ONL = true; MYTEAM = cfg.mode === 'tdm' ? team : 'p';
+  S.map = cfg.map; S.gm = Object.assign(S.gm, {mode: cfg.mode, bots: 0, team: team, frag: cfg.frag || 30});
+  save(); loadUI('Joining match…', .5);
+  await loadMap(); await NAVP; await ASSETP;
+  FL = S.gm.frag; P.fr = P.de = 0; TSC.T = TSC.CT = 0; P.money = 800;
+  GN = {hegrenade: 1, flashbang: 2, smokegrenade: 1}; clearNades();
+  P.hp = 100; P.ar = 100; P.dead = false; third = false; AM = {}; reloadT = 0;
+  initBots(); BM.on = false; const dl = defLoad(); S.load[0] = dl[0]; S.load[1] = dl[1]; S.load[2] = 'knife';
+  await applyLoadout(); restart(); inMatch = true; loadDone(); mpRender(); play();
+}
+
+async function netLeave(emit){
+  if(emit && ROOM){
+    const { data } = await db.from('rooms').select('players').eq('id', ROOM).single();
+    if(data && data.players){
+      delete data.players[ME];
+      if(Object.keys(data.players).length === 0){
+        await db.from('rooms').delete().eq('id', ROOM);
+      } else {
+        await db.from('rooms').update({ players: data.players }).eq('id', ROOM);
+      }
+    }
+  }
+  if(window.roomChannel) { db.removeChannel(window.roomChannel); window.roomChannel = null; }
+  ONL = false; ROOM = ''; ISHOST = false; RS = []; RCFG = null; clearRemotes(); mpRender(); if(DB || supabase) mpList();
+}
+
+function netHud(){ return '\nROOM ' + ROOM + ' · ' + RS.slice().sort((a,b)=>b.k-a.k).slice(0,4).map(p=>p.name+' '+p.k+'/'+p.d).join(' | '); }
+
+$('mpc').onclick = mpCreate;
+$('mpg').onclick = () => mpJoin();
+$('mps').onclick = async () => {
+  if(ROOM) {
+    await db.from('rooms').update({ started: true }).eq('id', ROOM);
+  }
+};
+$('mpl').onclick = () => { netLeave(true); mpSt('Left the room.'); };
 /* ---------- Loop ---------- */
 function resize(){const w=innerWidth,h=innerHeight;R.setPixelRatio(S.style==='retro'?S.scale:Math.min(devicePixelRatio,2));R.setSize(w,h,false);
  cam.aspect=vcam.aspect=w/h;cam.fov=S.fov;cam.updateProjectionMatrix();vcam.updateProjectionMatrix();}
