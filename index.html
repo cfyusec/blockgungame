@@ -321,7 +321,7 @@ function boxMap(n,L,SP,ST){const g=new THREE.Group(),BX=[],tex=gridTex();
  const add=(cx,top,cz,w,d,col,tag,th=32)=>{const b={x0:cx-w/2,x1:cx+w/2,y1:top,y0:top-th,z0:cz-d/2,z1:cz+d/2,tag:tag||''};b.lo=[b.x0-16,b.y0-72,b.z0-16];b.hi=[b.x1+16,b.y1,b.z1+16];BX.push(b);
   const ge=new THREE.BoxGeometry(w,th,d),uv=ge.attributes.uv,dm=[[d,th],[d,th],[w,d],[w,d],[w,th],[w,th]];
   for(let f=0;f<6;f++)for(let i=0;i<4;i++){const k=f*4+i;uv.setXY(k,uv.getX(k)*dm[f][0]/64,uv.getY(k)*dm[f][1]/64);}
-  const m=new THREE.Mesh(ge,new THREE.MeshLambertMaterial({map:tex,color:col}));m.position.set(cx,top-th/2,cz);g.add(m);};
+  const m=new THREE.Mesh(ge,new THREE.MeshLambertMaterial({map:tex,color:safeMatColor(col)}));m.position.set(cx,top-th/2,cz);g.add(m);};
  if(L){L.forEach(b=>add(b[0],b[1],b[2],b[3],b[4],b[6],'',b[5]));}else{
   add(0,0,-1000,1600,2400,0xb8c4d0);
   for(let i=1;i<=8;i++)add(-600,16*i,-60-i*48,120,48,0xd0d8e0);
@@ -354,7 +354,8 @@ const sun=new THREE.DirectionalLight(0xfff0d0,0.6);sun.position.set(300,800,200)
 const cam=new THREE.PerspectiveCamera(90,1,1,14000);cam.rotation.order='YXZ';
 const vs=new THREE.Scene(),vcam=new THREE.PerspectiveCamera(74,1,0.5,300);
 vs.add(new THREE.HemisphereLight(0xffffff,0x888899,1.1));const vl=new THREE.DirectionalLight(0xffffff,0.5);vl.position.set(1,2,2);vs.add(vl);
-const mk=(g,c,x,y,z)=>{const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:c}));m.position.set(x,y,z);return m;};
+const safeMatColor=c=>(c===undefined||c===null||!Number.isFinite(Number(c)))?0x888888:c;
+const mk=(g,c,x,y,z)=>{const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:safeMatColor(c)}));m.position.set(x,y,z);return m;};
 const vwrap=new THREE.Group();vs.add(vwrap);
 const vroot=new THREE.Group();vroot.rotation.order='YXZ';vroot.rotation.set(-Math.PI/2,Math.PI/2,0);vwrap.add(vroot);
 const pv=new THREE.Group();scene.add(pv);pv.visible=false;
@@ -716,7 +717,7 @@ const MAPS={};
   ...hz(-700,-450,320,260,'e'),...hz(-700,450,320,260,'e'),...hz(0,-560,300,240,'s'),...hz(0,560,300,240,'n'),...hz(700,-450,320,260,'w'),...hz(700,450,320,260,'w'),
   blk(0,0,110,110,50,0x888890),blk(-300,-130,64,64,64,C),blk(300,130,64,64,64,C),blk(-350,200,64,64,64,C),blk(350,-200,64,64,64,C),blk(0,-250,200,24,36,W),blk(0,250,200,24,36,W)];
  MAPS.village={b:V,sp:[[-1250,-250,0,'terrorist'],[-1250,-100,0,'terrorist'],[-1250,50,0,'terrorist'],[-1250,200,0,'terrorist'],[-1150,-170,0,'terrorist'],[-1150,120,0,'terrorist'],[1250,-250,0,'counterterrorist'],[1250,-100,0,'counterterrorist'],[1250,50,0,'counterterrorist'],[1250,200,0,'counterterrorist'],[1150,-170,0,'counterterrorist'],[1150,120,0,'counterterrorist']]};})();
-function mkHuman(col){const g=new THREE.Group(),bd=new THREE.Group(),H={g,bd,ph:Math.random()*6,amp:0};g.add(bd);
+function mkHuman(col){col=safeMatColor(col);const g=new THREE.Group(),bd=new THREE.Group(),H={g,bd,ph:Math.random()*6,amp:0};g.add(bd);
  const bx=(w,h,d,c,x,y,z,par)=>{const m=mk(new THREE.BoxGeometry(w,h,d),c,x,y,z);par.add(m);return m;},pv=(x,y,par)=>{const p=new THREE.Group();p.position.set(x,y,0);par.add(p);return p;};
  H.lL=pv(-5,34,g);H.rL=pv(5,34,g);H.lK=pv(0,-17,H.lL);H.rK=pv(0,-17,H.rL);H.legM=[H.lL,H.rL,H.lK,H.rK].map(q=>bx(9,17,10,0x2f3a52,0,-8.5,0,q));
  H.tor=bx(20,24,11,col,0,46,0,bd);H.head=bx(10,12,10,0xd9a67a,0,66,0,bd);H.head.rotation.z=Math.PI;H.lA=pv(-13,56,bd);H.rA=pv(13,56,bd);H.armM=[bx(6,24,6,col,0,-12,0,H.lA),bx(6,24,6,col,0,-12,0,H.rA)];H.hat=bx(11,4,11,0x15203a,0,73,0,bd);H.hat.visible=false;H.gs=pv(0,-24,H.rA);return H;}
@@ -738,7 +739,7 @@ function mkBot(n,col,home,passive,fixed,team){const H=mkHuman(col),g=H.g;g.rotat
  const b={m:g,p:new THREE.Vector3(),H,n,team,fr:0,cd:1,sw:0,sd:1,rt:0,np,npc,home,passive,fixed,ph:Math.random()*6,vx:0,vz:0,yaw:0,blind:0,money:800};botSpawn(b);bots.push(b);}
 function initBots(){for(const b of bots){ragClear(b.H);scene.remove(b.m);}bots=[];const tr=S.map==='train',tdm=S.gm.mode!=='dm',k=S.gm.bots,TC={T:0xb5651d,CT:0x3a6ab0},C=[0x7a3a3a,0x3a6a4a,0x3a4a8a,0x8a6a2a,0x6a3a7a],ot=S.gm.team==='T'?'CT':'T';P.team=tdm&&!tr?S.gm.team:'p';setSkin(PH,P.team);
  if(tr){FIXT.forEach(([x,z],i)=>mkBot('Target '+(i+1),0xd08030,{x,y:0,z},true,true,'x'+i));for(let i=0;i<k;i++)mkBot('Bot '+(i+1),C[i%5],{x:(i-(k-1)/2)*220,y:0,z:-3300},true,false,'y'+i);if(k)setTimeout(()=>flash('Bots were sent to the far end of the range as moving targets',4000),300);}
- else{const al=tdm?k>>1:0;for(let i=0;i<k;i++){const ally=i<al,t=tdm?(ally?S.gm.team:ot):'b'+i;mkBot((ally?'Ally ':'Bot ')+(i+1),tdm?TC[t]:C[i%5],null,false,false,t);}}}
+ else{const al=tdm?k>>1:0;for(let i=0;i<k;i++){const ally=i<al,t=tdm?(ally?(S.gm.team==='T'?'T':'CT'):ot):'b'+i;const botCol=tdm?(TC[t]??C[i%5]):C[i%5];mkBot((ally?'Ally ':'Bot ')+(i+1),safeMatColor(botCol),null,false,false,t);}}}
 const TSC={T:0,CT:0},GR={hegrenade:1.6,flashbang:1.4,smokegrenade:1.8},GC={hegrenade:0x3d5a35,flashbang:0xdddddd,smokegrenade:0x77848c};
 let GN={hegrenade:1,flashbang:2,smokegrenade:1},NADES=[],SMK=[],FX=[],blindT=0;
 const posOf=t=>t===P?P.p:t.p;
@@ -937,7 +938,7 @@ const pkTex={};
 function pkLab(n){if(!pkTex[n]){const c=document.createElement('canvas');c.width=128;c.height=32;const x=c.getContext('2d');x.fillStyle='#000a';x.fillRect(0,0,128,32);x.font='bold 18px Verdana';x.textAlign='center';x.fillStyle='#ffd24a';x.fillText(n,64,23);pkTex[n]=new THREE.CanvasTexture(c);}
  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:pkTex[n],fog:false,transparent:true}));s.scale.set(36,9,1);s.position.y=14;return s;}
 function droppedGunMesh(id){if(DEFP[id]){try{if(!P_MODEL_CACHE[id]){P_MODEL_CACHE[id]=mdl(DEFP[id]);P_MODEL_CACHE[id].update(0);}const g=P_MODEL_CACHE[id].grp.clone(true);g.traverse(o=>{if(o.isMesh&&o.material)o.material=o.material.clone();});g.scale.setScalar(.72);g.rotation.x=-Math.PI/2;return g;}catch(e){console.warn('p_ model fallback:',id,e);}}const g=gunMesh(id);g.scale.setScalar(1.5);return g;}
-function dropPickup(id,p,v,ammo){const root=new THREE.Group(),g=droppedGunMesh(id);g.position.y=-20;root.add(g,pkLab(id.toUpperCase()));root.rotation.y=Math.random()*6.28;scene.add(root);
+function dropPickup(id,p,v,ammo){const root=new THREE.Group(),g=droppedGunMesh(id);g.position.y=-30;root.add(g,pkLab(id.toUpperCase()));root.rotation.y=Math.random()*6.28;scene.add(root);
  const k={id,m:root,p:new THREE.Vector3(p.x,p.y,p.z),v:new THREE.Vector3(v.x,v.y,v.z),t:120,ammo,rest:false,cool:0};PK.push(k);return k;}
 function clearPK(){PK.forEach(k=>scene.remove(k.m));PK.length=0;BL.forEach(b=>scene.remove(b.m));BL.length=0;SPL.forEach(o=>scene.remove(o.m));SPL.length=0;NEAR=null;}
 function pickGun(k){const slot=WBY[k.id].slot,old=S.load[slot];if(old&&W[old])netDrop(old,{x:P.p.x,y:P.p.y+10,z:P.p.z},{x:0,y:100,z:0},AM[old],2);
