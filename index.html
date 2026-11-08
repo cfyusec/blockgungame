@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
 <title>GoldSrc Gun Game</title>
 <style>
 :root{--panel:#2b3426ee;--edge:#6d7d60;--ink:#e8dfb0;--mute:#a49f7c;--acc:#ffb000;--accink:#1b1809;--hud:#ffb000;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -406,7 +410,7 @@ function restart(cyc){const L=(P.team==='T'||P.team==='CT')?spawnsFor(P.team):wo
  if(cyc&&L&&L.length)flash('Spawn '+(si+1)+'/'+L.length+' · '+s.cls,1500);}
 const fmt=t=>Math.floor(t/60)+':'+(t%60).toFixed(2).padStart(5,'0');
 function step(dt){
- const p=P.p,v=P.v,fw=clamp((K.KeyW||K.ArrowUp?1:0)-(K.KeyS||K.ArrowDown?1:0)+((typeof TC!=='undefined')?TC.fy:0),-1,1),rt=clamp((K.KeyD||K.ArrowRight?1:0)-(K.KeyA||K.ArrowLeft?1:0)+((typeof TC!=='undefined')?TC.fx:0),-1,1);
+ const p=P.p,v=P.v,fw=clamp((K.KeyW||K.ArrowUp?1:0)-(K.KeyS||K.ArrowDown?1:0)+TC.fy,-1,1),rt=clamp((K.KeyD||K.ArrowRight?1:0)-(K.KeyA||K.ArrowLeft?1:0)+TC.fx,-1,1);
  let wx=-Math.sin(yaw)*fw+Math.cos(yaw)*rt,wz=-Math.cos(yaw)*fw-Math.sin(yaw)*rt;const wl=Math.hypot(wx,wz);
  if(wl>0){wx/=wl;wz/=wl;}const want=!!(K.KeyC||K.ControlLeft||K.ControlRight);
  if(want&&!P.duck){P.duck=true;if(!P.g){p.y+=18;P.eye-=18;}}
@@ -1117,13 +1121,13 @@ $('mpc').onclick=()=>mpCreate();$('mpq').onclick=mpQuick;$('mprfind').addEventLi
 S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,lay:{}},S.pc);S.q=S.q||'auto';S.cap=+S.cap||0;
 const TC={fx:0,fy:0};let PHONE=false,tcShown=false,tcEditing=false,tcSel=null,vmAcc=0,lastDraw=0;
 /* ---- quality helpers (used by the small patches) ---- */
-const IS_TOUCH_DEV=!!(('ontouchstart' in window)||(navigator.maxTouchPoints>0));
+const IS_TOUCH_DEV=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 const Q=()=>S.q==='auto'||!S.q?(IS_TOUCH_DEV?'low':'high'):S.q;
 const qPR=()=>{const q=Q(),d=devicePixelRatio||1;if(S.style==='retro')return S.scale;return Math.max(.5,(q==='low'?Math.min(d,1):q==='med'?Math.min(d,1.5):Math.min(d,2))*(S.scale||1));};
 const QF=()=>Q()==='low'?1:Q()==='med'?1.6:2.2;
 const QCAP=()=>Q()==='low'?{spl:30,hole:30}:Q()==='med'?{spl:60,hole:50}:{spl:90,hole:80};
 const TRG=new THREE.BoxGeometry(.8,.8,1);
-function applyFog(){if(!world||!Array.isArray(world.fog)||world.fog.length<2)return;const f=Q()==='low'?.6:Q()==='med'?.8:1;scene.fog=new THREE.Fog(SKY,world.fog[0]*f,world.fog[1]*f);cam.far=world.fog[1]*f+1500;cam.updateProjectionMatrix();}
+function applyFog(){if(!world)return;const f=Q()==='low'?.6:Q()==='med'?.8:1;scene.fog=new THREE.Fog(SKY,world.fog[0]*f,world.fog[1]*f);cam.far=world.fog[1]*f+1500;cam.updateProjectionMatrix();}
 /* ---- touch UI definition: id, label, x%, y%, size px ---- */
 const TCB=[['fire','FIRE',90,72,88],['jump','JUMP',77,86,64],['duck','DUCK',93,46,52],['reload','R',68,72,54],['alt','ALT',80,62,52],['use','USE',66,88,52],
  ['w1','1',38,9,40],['w2','2',44,9,40],['w3','3',50,9,40],['nade','NADE',56,9,44],['buy','BUY',4,24,46],['drop','DROP',4,38,46],['insp','F',12,24,40],['menu','☰',4,8,42],['tab','TAB',11,8,40],['chat','CHAT',18,8,40]];
@@ -1134,13 +1138,16 @@ const TCA={fire:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],j
  tab:[()=>{const sb=$('scoreboard');if(sb.style.display!=='flex'){renderScoreboard();sb.style.display='flex';}else sb.style.display='none';}]};
 (function(){const st=document.createElement('style');st.textContent=`
 #touch{position:fixed;inset:0;z-index:9000;display:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#tcrotate{display:none;position:fixed;inset:0;z-index:9999999;background:#080a07;color:#ffb000;align-items:center;justify-content:center;text-align:center;padding:24px;font:700 18px/1.5 system-ui,sans-serif;touch-action:none}
+@media (orientation:portrait){body.phone.playing-touch #tcrotate{display:flex}body.phone.playing-touch #touch{visibility:hidden}}
 #tcmove,#tclook{position:absolute;top:0;bottom:0;touch-action:none}#tcmove{left:0;width:42%}#tclook{left:42%;right:0}
 .tcb{position:absolute;transform:translate(-50%,-50%);border-radius:50%;border:2px solid rgba(255,255,255,.8);background:rgba(20,24,18,.55);color:#fff;font:700 13px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;touch-action:none;-webkit-tap-highlight-color:transparent;text-shadow:1px 1px 0 #000;user-select:none}
 .tcb.act{background:rgba(255,176,0,.8);color:#000}.tcb.on{background:rgba(255,176,0,.65);color:#000}.tcb.sel{outline:3px dashed #ffb000;outline-offset:3px}
 #tcstick{position:absolute;display:none;pointer-events:none;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.08)}
 #tcknob{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);left:50%;top:50%;transform:translate(-50%,-50%)}
 #tcbar{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:9100;display:none;gap:6px;background:#000c;padding:6px 8px;border:1px solid var(--edge);flex-wrap:wrap;justify-content:center}
-html,body,canvas{touch-action:none}#menu,#box{touch-action:pan-y;-webkit-overflow-scrolling:touch}
+html,body,canvas,#touch,.tcb,#tcmove,#tclook{touch-action:none}#menu,#box{touch-action:pan-y;-webkit-overflow-scrolling:touch}
+body.phone{overscroll-behavior:none;-webkit-text-size-adjust:100%}body.phone .tcb{ -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
 body.phone .btn{padding:10px 16px}body.phone .mi{font-size:26px;padding:6px 8px 6px 0}body.phone input[type=range]{height:28px}body.phone select{padding:8px}
 body.phone #hud{display:none}body.phone #dm{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px));right:50%;transform:translateX(50%);text-align:center;font-size:12px}
 body.phone #ingamechat{bottom:auto!important;top:64px;left:10px}body.phone #bars{bottom:calc(8px + env(safe-area-inset-bottom,0px));width:min(240px,40vw)}body.phone #lockhint{display:none!important}`;document.head.appendChild(st);})();
@@ -1151,10 +1158,11 @@ function tcLayout(){const t=$('touch');if(!t)return;t.querySelectorAll('.tcb').f
  b.style.left=p.x+'%';b.style.top=p.y+'%';b.style.width=b.style.height=sz+'px';b.style.fontSize=Math.max(10,sz*.26)+'px';b.style.opacity=p.on?S.pc.op:(tcEditing?.2:0);b.style.display=(p.on||tcEditing)?'flex':'none';b.classList.toggle('sel',tcEditing&&tcSel===id);});}
 function tcScale(f){if(!tcSel)return;const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.s=clamp((l.s||1)*f,.5,2.2);save();tcLayout();}
 function tcEdit(on){tcEditing=on;$('tcbar').style.display=on?'flex':'none';tcSel=null;if(on)$('menu').style.display='none';else{$('menu').style.display='flex';panel('set','Settings');}tcLayout();tcSync();}
-function tcSync(){const want=tcEditing||(PHONE&&playing&&!buyOpen&&!matchEnding);if(want!==tcShown){tcShown=want;$('touch').style.display=want?'block':'none';
+function tcSync(){document.body.classList.toggle('playing-touch',!!(PHONE&&playing));const want=tcEditing||(PHONE&&playing&&!buyOpen&&!matchEnding);if(want!==tcShown){tcShown=want;$('touch').style.display=want?'block':'none';
  if(!want){TC.fx=TC.fy=0;K.KeyC=K.Space=K.KeyE=false;mh=mh2=false;document.querySelectorAll('.tcb.on').forEach(b=>b.classList.remove('on'));}}}
-function tcEnter(){if(!S.pc.fs)return;const e=document.documentElement;try{if(!document.fullscreenElement&&e.requestFullscreen){const r=e.requestFullscreen({navigationUI:'hide'});if(r&&r.then)r.then(()=>{try{screen.orientation.lock('landscape').catch(()=>{});}catch(_){}}).catch(()=>{});}else if(e.webkitRequestFullscreen)e.webkitRequestFullscreen();}catch(_){}}
-function tcBuild(){const t=document.createElement('div');t.id='touch';t.innerHTML='<div id="tcmove"></div><div id="tclook"></div><div id="tcstick"><div id="tcknob"></div></div>';document.body.appendChild(t);
+function tcEnter(){if(!S.pc.fs)return;const e=document.documentElement;const lock=()=>{try{const o=screen.orientation;if(o&&o.lock){const p=o.lock('landscape');if(p&&p.catch)p.catch(()=>{});}}catch(_){}};try{if(!document.fullscreenElement&&e.requestFullscreen){const r=e.requestFullscreen({navigationUI:'hide'});if(r&&r.then)r.then(lock).catch(()=>{});else lock();}else{if(e.webkitRequestFullscreen)e.webkitRequestFullscreen();lock();}}catch(_){lock();}}
+function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot.textContent='↻  Hãy xoay điện thoại nằm ngang để chơi';document.body.appendChild(rot);
+ const t=document.createElement('div');t.id='touch';t.innerHTML='<div id="tcmove"></div><div id="tclook"></div><div id="tcstick"><div id="tcknob"></div></div>';document.body.appendChild(t);
  for(const a of TCB){const b=document.createElement('div');b.className='tcb';b.dataset.id=a[0];b.textContent=a[1];t.appendChild(b);}
  const bar=document.createElement('div');bar.id='tcbar';bar.innerHTML='<button class="btn p" id="tcdone">Done</button><button class="btn" id="tcmin">−</button><button class="btn" id="tcplus">+</button><button class="btn" id="tchide">Hide/Show</button><button class="btn" id="tcrst">Reset</button><span style="flex-basis:100%;text-align:center;font-size:11px;color:var(--mute)">Drag a button to move it · tap to select · − / + resizes</span>';document.body.appendChild(bar);
  t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id;let drag=null;
@@ -1169,13 +1177,16 @@ function tcBuild(){const t=document.createElement('div');t.id='touch';t.innerHTM
  mv.addEventListener('pointermove',e=>{if(e.pointerId!==mid)return;const r=R0();let dx=e.clientX-ox,dy=e.clientY-oy;const d=Math.hypot(dx,dy);if(d>r){dx*=r/d;dy*=r/d;}
   kn.style.transform='translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))';const L=Math.hypot(dx,dy),m=Math.min(1,L/r);if(m<.15){TC.fx=TC.fy=0;}else{const s=Math.min(1,(m-.15)/.7);TC.fx=dx/L*s;TC.fy=-dy/L*s;}});
  const mvUp=e=>{if(e.pointerId!==mid)return;mid=null;TC.fx=TC.fy=0;st.style.display='none';};mv.addEventListener('pointerup',mvUp);mv.addEventListener('pointercancel',mvUp);
- lk.addEventListener('pointerdown',e=>{if(tcEditing||lid!==null)return;e.preventDefault();lid=e.pointerId;try{lk.setPointerCapture(lid);}catch(_){}lx=e.clientX;ly=e.clientY;});
- lk.addEventListener('pointermove',e=>{if(e.pointerId!==lid)return;const s=S.sens*0.0011*S.pc.sens*(zoomFov?zoomFov/S.fov:1);yaw-=(e.clientX-lx)*s;pitch=clamp(pitch-(e.clientY-ly)*s,-1.5,1.5);lx=e.clientX;ly=e.clientY;});
- const lkUp=e=>{if(e.pointerId===lid)lid=null;};lk.addEventListener('pointerup',lkUp);lk.addEventListener('pointercancel',lkUp);
+ // Track touch pointers globally in capture phase: a finger can begin on FIRE/JUMP/etc.
+ // and still drag to turn the camera without cancelling the button press.
+ const lookPointers=new Map();
+ document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||e.pointerType!=='touch'||e.clientX<innerWidth*.42)return;lookPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});},{capture:true});
+ document.addEventListener('pointermove',e=>{const prev=lookPointers.get(e.pointerId);if(!prev||tcEditing)return;const s=S.sens*0.0011*S.pc.sens*(zoomFov?zoomFov/S.fov:1);yaw-=(e.clientX-prev.x)*s;pitch=clamp(pitch-(e.clientY-prev.y)*s,-1.5,1.5);prev.x=e.clientX;prev.y=e.clientY;},{capture:true});
+ const stopLook=e=>lookPointers.delete(e.pointerId);document.addEventListener('pointerup',stopLook,{capture:true});document.addEventListener('pointercancel',stopLook,{capture:true});
  $('tcdone').onclick=()=>tcEdit(false);$('tcrst').onclick=()=>{S.pc.lay={};save();tcLayout();};$('tcplus').onclick=()=>tcScale(1.1);$('tcmin').onclick=()=>tcScale(1/1.1);
  $('tchide').onclick=()=>{if(!tcSel)return;const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.on=l.on===false;save();tcLayout();};tcLayout();}
 /* ---- Settings UI (injected into Settings > Game) ---- */
-(function(){const g=document.querySelector('#t-set .sp[data-sp="game"]');g.insertAdjacentHTML('beforeend',`
+(function(){const g=document.querySelector('#t-set .sp[data-sp="game"]');if(!g){console.warn('[phone-ui] Settings > Game panel not found; phone controls remain available.');return;}g.insertAdjacentHTML('beforeend',`
 <h3 style="margin:12px 0 4px">Phone / touch controls</h3>
 <label><span>Control mode</span><select id="pcmode"><option value="auto">Auto-detect</option><option value="phone">Phone (touch)</option><option value="pc">PC (keyboard + mouse)</option></select></label>
 <label><span>Look sensitivity</span><input type="range" id="pcsens" min="0.5" max="4" step="0.1"></label>
@@ -1192,7 +1203,7 @@ function tcBuild(){const t=document.createElement('div');t.id='touch';t.innerHTM
  $('qual').onchange=e=>{S.q=e.target.value;apply();};$('fpscap').onchange=e=>{S.cap=+e.target.value;save();};
  $('pcedit').onclick=()=>{S.pc.mode==='pc'&&(S.pc.mode='phone',$('pcmode').value='phone',updPhone());tcEdit(true);};$('pcreset').onclick=()=>{S.pc.lay={};save();tcLayout();};})();
 updPhone();tcBuild();
-addEventListener('orientationchange',()=>setTimeout(resize,300));
+addEventListener('orientationchange',()=>setTimeout(()=>{resize();tcSync();tcLayout();},300));
 document.addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('touchmove',e=>{if(PHONE&&(playing||tcEditing))e.preventDefault();},{passive:false});
 addEventListener('touchstart',()=>{try{audioOutput();}catch(e){}},{once:true,passive:true});
@@ -1202,7 +1213,7 @@ function resize(){const w=innerWidth,h=innerHeight;R.setPixelRatio(qPR());R.setS
  cam.aspect=vcam.aspect=w/h;cam.fov=S.fov;cam.updateProjectionMatrix();vcam.updateProjectionMatrix();}
 addEventListener('resize',resize);
 let last=performance.now(),acc=0,fpsN=0,fpsT=last,sbRefreshAt=0;
-function tick(now){requestAnimationFrame(tick);if(typeof tcSync==='function')tcSync();if(S.cap>0&&now-(window.__phoneFrameGate||0)<1000/S.cap)return;window.__phoneFrameGate=now;if($("scoreboard")&&$("scoreboard").style.display==='flex'&&now>=sbRefreshAt){sbRefreshAt=now+250;renderScoreboard();}
+function tick(now){requestAnimationFrame(tick);if(typeof tcSync==='function')tcSync();if(S.cap>0&&now-(window.__phoneFrameGate||0)<1000/S.cap){return;}window.__phoneFrameGate=now;if($("scoreboard")&&$("scoreboard").style.display==='flex'&&now>=sbRefreshAt){sbRefreshAt=now+250;renderScoreboard();}
  const dt=Math.min(0.1,(now-last)/1000);last=now;
  fpsN++;if(now-fpsT>=500){$('fps').textContent=Math.round(fpsN*1000/(now-fpsT))+' fps';fpsN=0;fpsT=now;}
  {const nm=$('nomodel'),show=playing&&!third&&!vm&&!zoomFov;if(show){const w=WBY[S.load[cs]];nm.textContent=S.load[cs]==null?'Empty slot · pick up a weapon':'No model for '+(w?w.name:['Primary','Secondary','Knife'][cs])+' · add its .mdl in the Models tab or buy menu (B)';}nm.style.display=show?'block':'none';}
