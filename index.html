@@ -14,7 +14,7 @@
 :root[data-theme="light"]{--panel:#e6e2c8ee;--edge:#8b8a6a;--ink:#2a2c1c;--mute:#5b5c45;--accink:#fff8e0}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;overflow:hidden;background:#000;font:13px/1.4 Verdana,"Trebuchet MS",sans-serif}
-canvas{display:block;width:100%;height:100%}canvas.px{image-rendering:pixelated}
+canvas{display:block;width:100%;height:100%}canvas.px{image-rendering:pixelated}#cv{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important}
 #hud{position:fixed;left:18px;bottom:calc(16px + env(safe-area-inset-bottom,0px));color:var(--hud);font:700 40px/1 "Lucida Console","Courier New",monospace;text-shadow:0 0 6px #ffb00088,1px 1px 0 #000;pointer-events:none}
 #hud small{font-size:13px;margin-left:8px;opacity:.85}#tm{font-size:20px;margin-top:6px}
 #msg{position:fixed;left:50%;top:14%;transform:translateX(-50%);color:var(--hud);font:700 18px "Lucida Console",monospace;text-shadow:1px 1px 0 #000;pointer-events:none;text-align:center}
@@ -53,6 +53,9 @@ body.mainscr #ingamechat,body.mainscr #scoreboard,body.mainscr #hud,body.mainscr
 #bhead{display:flex;align-items:center;gap:12px;margin-bottom:8px;position:sticky;top:-10px;z-index:3;background:var(--panel);padding:4px 0}
 #cross{position:fixed!important;left:50%!important;top:50%!important;width:0!important;height:0!important;background:none!important;border:0!important;box-shadow:none!important;transform:none!important;pointer-events:none}
 #cross .xb{position:absolute;background:var(--xc);box-shadow:0 0 0 1px #000a}#cross .xr{position:absolute;border:2px solid;border-radius:50%;box-sizing:border-box}#cross.hm .xb{background:#f33!important}
+#cross.reloading::after{content:"";position:absolute;left:-19px;top:-19px;width:38px;height:38px;border:2px solid rgba(255,176,0,.28);border-top-color:#ffb000;border-right-color:#ffb000;border-radius:50%;box-shadow:0 0 7px #ffb00088;animation:reloadOrbit .75s linear infinite}
+@keyframes reloadOrbit{to{transform:rotate(360deg)}}
+body.phone #dm{pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab;padding:5px 9px;border:1px solid #ffb00055;border-radius:6px;background:#0002}
 #pick{position:fixed;left:50%;bottom:30%;transform:translateX(-50%);color:var(--hud);font:700 15px "Lucida Console",monospace;text-shadow:1px 1px 0 #000;pointer-events:none;display:none;background:#0008;padding:4px 10px}
 body.mainscr #pick{display:none!important}
 #money{position:fixed;right:calc(18px + env(safe-area-inset-right,0px));top:calc(44px + env(safe-area-inset-top,0px));color:#6fd36f;font:700 26px "Lucida Console",monospace;text-shadow:2px 2px 0 #000;pointer-events:none}
@@ -577,7 +580,10 @@ $('style').onchange=async e=>{S.style=e.target.value;save();applyUI();await load
 function lockMouse(){const rq=o=>{try{const r=o?cv.requestPointerLock(o):cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{if(o)rq();});}catch(e){if(o)rq();}};rq({unadjustedMovement:true});}
 function play(){
  if(matchEnding)return;playing=true;$('menu').style.display='none';document.body.classList.remove('mainscr');
+ // The canvas is display:none on the home screen. Re-measure only after it
+ // becomes visible; otherwise WebGL can remain at 1x1 until device rotation.
  if(typeof updPhone==='function'){updPhone();if(PHONE)tcEnter();tcSync();}
+ queueGameResize();
  // Ask the browser to capture the mouse so it stays inside the game.
  lockMouse();
 }
@@ -1167,7 +1173,7 @@ function tcEdit(on){tcEditing=on;$('tcbar').style.display=on?'flex':'none';tcSel
 function tcSync(){document.body.classList.toggle('playing-touch',!!(PHONE&&playing));const want=tcEditing||(PHONE&&playing&&!buyOpen&&!matchEnding);if(want!==tcShown){tcShown=want;$('touch').style.display=want?'block':'none';
  if(!want){TC.fx=TC.fy=0;K.KeyC=K.Space=K.KeyE=false;mh=mh2=false;document.querySelectorAll('.tcb.on').forEach(b=>b.classList.remove('on'));}}}
 function tcEnter(){if(!S.pc.fs)return;const e=document.documentElement;const lock=()=>{try{const o=screen.orientation;if(o&&o.lock){const p=o.lock('landscape');if(p&&p.catch)p.catch(()=>{});}}catch(_){}};try{if(!document.fullscreenElement&&e.requestFullscreen){const r=e.requestFullscreen({navigationUI:'hide'});if(r&&r.then)r.then(lock).catch(()=>{});else lock();}else{if(e.webkitRequestFullscreen)e.webkitRequestFullscreen();lock();}}catch(_){lock();}}
-function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot.textContent='↻  Hãy xoay điện thoại nằm ngang để chơi';document.body.appendChild(rot);
+function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot.textContent='↻  Rotate your device to landscape to play';document.body.appendChild(rot);
  const t=document.createElement('div');t.id='touch';t.innerHTML='<div id="tcmove"></div><div id="tclook"></div><div id="tcstick"><div id="tcknob"></div></div>';document.body.appendChild(t);
  for(const a of TCB){const b=document.createElement('div');b.className='tcb';b.dataset.id=a[0];b.textContent=a[1];t.appendChild(b);}
  const bar=document.createElement('div');bar.id='tcbar';bar.innerHTML='<button class="btn p" id="tcdone">Done</button><button class="btn" id="tcmin">−</button><button class="btn" id="tcplus">+</button><button class="btn" id="tchide">Hide/Show</button><button class="btn" id="tcrst">Reset</button><span class="tc-grip" id="tcgrip">⠿ HOLD HERE TO MOVE PANEL · Drag buttons to arrange · − / + resize</span>';document.body.appendChild(bar);
@@ -1191,7 +1197,7 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
  // Track touch pointers globally in capture phase: a finger can begin on FIRE/JUMP/etc.
  // and still drag to turn the camera without cancelling the button press.
  const lookPointers=new Map();
- document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||e.pointerType!=='touch'||e.clientX<innerWidth*.42)return;lookPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});},{capture:true});
+ document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||e.pointerType!=='touch'||(e.target&&e.target.closest&&e.target.closest('#dm'))||e.clientX<innerWidth*.42)return;lookPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});},{capture:true});
  document.addEventListener('pointermove',e=>{const prev=lookPointers.get(e.pointerId);if(!prev||tcEditing)return;const s=S.sens*0.0011*S.pc.sens*(zoomFov?zoomFov/S.fov:1);yaw-=(e.clientX-prev.x)*s;pitch=clamp(pitch-(e.clientY-prev.y)*s,-1.5,1.5);prev.x=e.clientX;prev.y=e.clientY;},{capture:true});
  const stopLook=e=>lookPointers.delete(e.pointerId);document.addEventListener('pointerup',stopLook,{capture:true});document.addEventListener('pointercancel',stopLook,{capture:true});
  $('tcdone').onclick=()=>tcEdit(false);$('tcrst').onclick=()=>{S.pc.lay={};save();tcLayout();};$('tcplus').onclick=()=>tcScale(1.1);$('tcmin').onclick=()=>tcScale(1/1.1);
@@ -1214,15 +1220,43 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
  $('qual').onchange=e=>{S.q=e.target.value;apply();};$('fpscap').onchange=e=>{S.cap=+e.target.value;save();};
  $('pcedit').onclick=()=>{S.pc.mode==='pc'&&(S.pc.mode='phone',$('pcmode').value='phone',updPhone());tcEdit(true);};$('pcreset').onclick=()=>{S.pc.lay={};save();tcLayout();};})();
 updPhone();tcBuild();
-addEventListener('orientationchange',()=>setTimeout(()=>{resize();tcSync();tcLayout();},300));
+// On phones, the match information block can be dragged away from the center HUD.
+(function enableDraggableMatchHud(){
+ const el=$('dm');if(!el)return;let drag=null;
+ const applySaved=()=>{const p=S.pc.dmPos;if(!p)return;el.style.left=(p.x*innerWidth)+'px';el.style.top=(p.y*innerHeight)+'px';el.style.right='auto';el.style.bottom='auto';el.style.transform='none';};
+ applySaved();
+ el.addEventListener('pointerdown',e=>{if(!PHONE||!playing)return;e.preventDefault();const r=el.getBoundingClientRect();drag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};el.style.left=r.left+'px';el.style.top=r.top+'px';el.style.right='auto';el.style.bottom='auto';el.style.transform='none';try{el.setPointerCapture(e.pointerId);}catch(_){} });
+ el.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;const x=clamp(e.clientX-drag.dx,0,innerWidth-el.offsetWidth),y=clamp(e.clientY-drag.dy,0,innerHeight-el.offsetHeight);el.style.left=x+'px';el.style.top=y+'px';});
+ const finish=e=>{if(!drag||drag.id!==e.pointerId)return;const r=el.getBoundingClientRect();S.pc.dmPos={x:r.left/Math.max(1,innerWidth),y:r.top/Math.max(1,innerHeight)};drag=null;save();};
+ el.addEventListener('pointerup',finish);el.addEventListener('pointercancel',finish);
+ addEventListener('resize',applySaved);
+})();
+addEventListener('orientationchange',()=>setTimeout(()=>{queueGameResize();tcSync();tcLayout();},300));
 document.addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('touchmove',e=>{if(PHONE&&(playing||tcEditing))e.preventDefault();},{passive:false});
 addEventListener('touchstart',()=>{try{audioOutput();}catch(e){}},{once:true,passive:true});
 
 /* ---------- Loop ---------- */
-function resize(){const w=innerWidth,h=innerHeight;R.setPixelRatio(qPR());R.setSize(w,h,false);
- cam.aspect=vcam.aspect=w/h;cam.fov=S.fov;cam.updateProjectionMatrix();vcam.updateProjectionMatrix();}
-addEventListener('resize',resize);
+let gameResizeQueued=false;
+function resize(){
+ // Ignore hidden-menu measurements: the home screen deliberately hides canvas.
+ if(!cv.isConnected||getComputedStyle(cv).display==='none')return;
+ const r=cv.getBoundingClientRect();
+ const w=Math.max(1,Math.round(r.width||document.documentElement.clientWidth||innerWidth));
+ const h=Math.max(1,Math.round(r.height||document.documentElement.clientHeight||innerHeight));
+ R.setPixelRatio(qPR());R.setSize(w,h,false);
+ cam.aspect=vcam.aspect=w/h;cam.fov=S.fov;cam.updateProjectionMatrix();vcam.updateProjectionMatrix();
+}
+function queueGameResize(){
+ if(gameResizeQueued)return;gameResizeQueued=true;
+ requestAnimationFrame(()=>{gameResizeQueued=false;resize();requestAnimationFrame(resize);});
+}
+addEventListener('resize',queueGameResize,{passive:true});
+addEventListener('orientationchange',()=>{queueGameResize();setTimeout(queueGameResize,120);setTimeout(queueGameResize,350);});
+addEventListener('pageshow',queueGameResize);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)queueGameResize();});
+if(window.visualViewport)window.visualViewport.addEventListener('resize',queueGameResize,{passive:true});
+if(window.ResizeObserver){const gameCanvasObserver=new ResizeObserver(queueGameResize);gameCanvasObserver.observe(cv);}
 let last=performance.now(),acc=0,fpsN=0,fpsT=last,sbRefreshAt=0;
 function tick(now){requestAnimationFrame(tick);if(typeof tcSync==='function')tcSync();if(S.cap>0&&now-(window.__phoneFrameGate||0)<1000/S.cap){return;}window.__phoneFrameGate=now;if($("scoreboard")&&$("scoreboard").style.display==='flex'&&now>=sbRefreshAt){sbRefreshAt=now+250;renderScoreboard();}
  const dt=Math.min(0.1,(now-last)/1000);last=now;
@@ -1238,7 +1272,7 @@ function tick(now){requestAnimationFrame(tick);if(typeof tcSync==='function')tcS
  vwrap.visible=!third&&!zoomFov;if(zoomFov&&cam.fov!==zoomFov){cam.fov=zoomFov;cam.updateProjectionMatrix();}else if(!zoomFov&&cam.fov!==S.fov){cam.fov=S.fov;cam.updateProjectionMatrix();}
  bs+=((S.bob&&P.g?Math.min(sp/MAXS,1):0)-bs)*Math.min(1,dt*10);const tt=now/1000;
  vwrap.position.set(Math.sin(tt*7)*0.35*bs+S.vo.x,-Math.abs(Math.sin(tt*7))*0.5*bs-silP()*5-1.6+S.vo.y,S.vo.z),vwrap.rotation.z=silP()*.5;
- if(mh&&playing)act('shoot',1);if(mh2&&playing&&S.load[cs]==='knife')stab();if(vm)vm.update(dt);
+ $('cross').classList.toggle('reloading',reloadT>0&&playing);if(mh&&playing)act('shoot',1);if(mh2&&playing&&S.load[cs]==='knife')stab();if(vm)vm.update(dt);
  $('spd').firstChild.nodeValue=Math.round(sp);$('tm').textContent=fmt(P.t)+'  jumps '+P.jumps;
  dome.position.copy(cam.position);if(!document.body.classList.contains('mainscr')){R.clear();R.render(scene,cam);R.clearDepth();R.render(vs,vcam);}}
 (async()=>{await libLoad();syncMode();showHome();renderLib();applyUI();await loadMap();await packLoad(S.pack);await applyLoadout();renderLib();requestAnimationFrame(tick);renderPacks();ASSETP=autoAssets().then(loadDone,loadDone);})();
