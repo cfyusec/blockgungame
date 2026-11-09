@@ -1123,7 +1123,7 @@ function mpShowSub(tab){document.querySelectorAll('#t-mp .mtabs button').forEach
 let roomReconnecting=false;function reconnectRoom(){if(roomReconnecting||!ROOM||!CH||!SB)return;roomReconnecting=true;const code=ROOM,cfg=RCFG,keep=Object.assign({},MYP),old=CH;CH=null;CHR=false;SB.removeChannel(old);MYP=keep;mpEnter(code,cfg);Object.assign(MYP,keep);roomReconnecting=false;}
 $('mpc').onclick=()=>mpCreate();$('mpq').onclick=mpQuick;$('mprfind').addEventListener('input',mpRenderRooms);const refreshRoomSearch=()=>{mpList();if(LOBBY){const st=LOBBY.presenceState(),m={};for(const k in st)for(const e of st[k])if(e.code&&Number(e.n)>0)m[e.code]=e;LOB=Object.values(m);}mpRenderRooms();mpSt('Room search refreshed. Select a room to join, or use Quick Match.');};$('mpfindrooms').onclick=refreshRoomSearch;$('mprreset').onclick=()=>{$('mprfind').value='';refreshRoomSearch();};setInterval(()=>{if(ROOM&&CH&&(CH.state==='closed'||CH.state==='errored'))reconnectRoom();},2500);$('mpg').onclick=()=>mpJoin();$('mps').onclick=sbStart;$('mpl').onclick=()=>{netLeave(true);mpSt('Left the room.');};
 /* ================= PHONE CONTROLS + PERFORMANCE ================= */
-S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,lay:{}},S.pc);S.q=S.q||'auto';S.cap=+S.cap||0;
+S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,weaponGesture:'tap',lay:{}},S.pc);S.q=S.q||'auto';S.cap=+S.cap||0;
 const TC={fx:0,fy:0};let PHONE=false,tcShown=false,tcEditing=false,tcSel=null,vmAcc=0,lastDraw=0;
 /* ---- quality helpers (used by the small patches) ---- */
 const IS_TOUCH_DEV=('ontouchstart' in window)||navigator.maxTouchPoints>0;
@@ -1152,6 +1152,8 @@ const TCA={fire:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],j
 .tcb.weapon-slot{border-radius:10px;border-width:2px;background:rgba(12,16,20,.78);width:76px!important;height:38px!important;font-size:11px!important;letter-spacing:.2px;white-space:nowrap;padding:0 5px;box-sizing:border-box}
 .tcb.weapon-slot.active{border-color:#ffb000;background:rgba(255,176,0,.32);color:#ffd36a;box-shadow:0 0 8px #ffb00055}
 #tcbar{touch-action:none;user-select:none;-webkit-user-select:none}
+body.phone #dm.layout-editing{pointer-events:auto!important;outline:2px dashed #ffb000;outline-offset:4px;background:rgba(0,0,0,.72);cursor:grab!important;z-index:9200!important}
+body.phone #dm.layout-editing:after{content:'  DRAG INFO';display:block;font:700 9px system-ui,sans-serif;letter-spacing:1px;color:#ffb000;text-align:center}
 #tcbar .tc-grip{flex-basis:100%;display:block;text-align:center;font-size:11px;color:var(--mute);padding:5px 12px;cursor:move;touch-action:none;border-top:1px solid #ffffff22;white-space:nowrap}
 #tcstick{position:absolute;display:none;pointer-events:none;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.08)}
 #tcknob{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);left:50%;top:50%;transform:translate(-50%,-50%)}
@@ -1181,12 +1183,13 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
  grip.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const r=bar.getBoundingClientRect();barDrag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};try{grip.setPointerCapture(e.pointerId);}catch(_){}bar.style.transform='none';});
  grip.addEventListener('pointermove',e=>{if(!barDrag||barDrag.id!==e.pointerId)return;const x=clamp(e.clientX-barDrag.dx,0,innerWidth-bar.offsetWidth),y=clamp(e.clientY-barDrag.dy,0,innerHeight-bar.offsetHeight);bar.style.left=x+'px';bar.style.top=y+'px';});
  const barUp=e=>{if(barDrag&&barDrag.id===e.pointerId){barDrag=null;}};grip.addEventListener('pointerup',barUp);grip.addEventListener('pointercancel',barUp);
- t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id;let drag=null;
+ t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id;let drag=null,weaponSwipe=null;
   b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();try{b.setPointerCapture(e.pointerId);}catch(_){}
    if(tcEditing){tcSel=id;const p=tcPos(id);drag={dx:e.clientX/innerWidth*100-p.x,dy:e.clientY/innerHeight*100-p.y};tcLayout();return;}
+   const ws=id==='w1'?0:id==='w2'?1:id==='w3'?2:-1;if(ws>=0&&S.pc.weaponGesture==='swipe'){weaponSwipe={slot:ws,x:e.clientX,y:e.clientY,moved:false};b.classList.add('act');return;}
    b.classList.add('act');const a=TCA[id];if(a&&a[0])a[0](b);});
-  b.addEventListener('pointermove',e=>{if(!tcEditing||!drag)return;const l=S.pc.lay[id]=S.pc.lay[id]||{};l.x=clamp(e.clientX/innerWidth*100-drag.dx,2,98);l.y=clamp(e.clientY/innerHeight*100-drag.dy,3,97);tcLayout();});
-  const up=()=>{if(tcEditing){drag=null;save();return;}b.classList.remove('act');const a=TCA[id];if(a&&a[1])a[1](b);};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);});
+  b.addEventListener('pointermove',e=>{if(weaponSwipe){const dx=e.clientX-weaponSwipe.x,dy=e.clientY-weaponSwipe.y;if(Math.hypot(dx,dy)>18)weaponSwipe.moved=true;return;}if(!tcEditing||!drag)return;const l=S.pc.lay[id]=S.pc.lay[id]||{};l.x=clamp(e.clientX/innerWidth*100-drag.dx,2,98);l.y=clamp(e.clientY/innerHeight*100-drag.dy,3,97);tcLayout();});
+  const up=e=>{if(tcEditing){drag=null;save();return;}b.classList.remove('act');if(weaponSwipe){const g=weaponSwipe;weaponSwipe=null;const dy=e.clientY-g.y;if(Math.abs(dy)>28){selSlot((g.slot+(dy<0?1:2))%3);}else selSlot(g.slot);return;}const a=TCA[id];if(a&&a[1])a[1](b);};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',e=>{weaponSwipe=null;drag=null;b.classList.remove('act');});});
  const mv=$('tcmove'),lk=$('tclook'),st=$('tcstick'),kn=$('tcknob');let mid=null,ox=0,oy=0,lid=null,lx=0,ly=0;const R0=()=>58*S.pc.size;
  mv.addEventListener('pointerdown',e=>{if(tcEditing||mid!==null)return;e.preventDefault();mid=e.pointerId;try{mv.setPointerCapture(mid);}catch(_){}ox=e.clientX;oy=e.clientY;const r=R0();
   st.style.cssText='display:block;left:'+(ox-r)+'px;top:'+(oy-r)+'px;width:'+2*r+'px;height:'+2*r+'px';kn.style.cssText='width:'+r*.8+'px;height:'+r*.8+'px;transform:translate(-50%,-50%)';});
@@ -1208,14 +1211,15 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
 <label><span>Look sensitivity</span><input type="range" id="pcsens" min="0.5" max="4" step="0.1"></label>
 <label><span>Button size</span><input type="range" id="pcsize" min="0.6" max="1.6" step="0.05"></label>
 <label><span>Button opacity</span><input type="range" id="pcop" min="0.2" max="1" step="0.05"></label>
+<label><span>Weapon switching gesture</span><select id="pcweaponGesture"><option value="tap">Tap slots</option><option value="swipe">Swipe between slots (Standoff 2 style)</option></select></label>
 <label><input type="checkbox" id="pcfs"> Fullscreen + landscape lock on start</label>
 <p><button class="btn" id="pcedit">Edit button layout…</button> <button class="btn" id="pcreset">Reset layout</button></p>
 <h3 style="margin:12px 0 4px">Performance</h3>
 <label><span>Quality</span><select id="qual"><option value="auto">Auto (Low on phones)</option><option value="low">Low – best FPS</option><option value="med">Medium</option><option value="high">High</option></select></label>
 <label><span>Max FPS</span><select id="fpscap"><option value="0">Unlimited</option><option value="30">30</option><option value="45">45</option><option value="60">60</option></select></label>`);
  const apply=()=>{save();updPhone();tcLayout();resize();applyFog();};
- $('pcmode').value=S.pc.mode;$('pcsens').value=S.pc.sens;$('pcsize').value=S.pc.size;$('pcop').value=S.pc.op;$('pcfs').checked=!!S.pc.fs;$('qual').value=S.q;$('fpscap').value=String(S.cap);
- $('pcmode').onchange=e=>{S.pc.mode=e.target.value;apply();};$('pcsens').oninput=e=>{S.pc.sens=+e.target.value;save();};$('pcsize').oninput=e=>{S.pc.size=+e.target.value;apply();};$('pcop').oninput=e=>{S.pc.op=+e.target.value;apply();};$('pcfs').onchange=e=>{S.pc.fs=e.target.checked;save();};
+ $('pcmode').value=S.pc.mode;$('pcweaponGesture').value=S.pc.weaponGesture||'tap';$('pcsens').value=S.pc.sens;$('pcsize').value=S.pc.size;$('pcop').value=S.pc.op;$('pcfs').checked=!!S.pc.fs;$('qual').value=S.q;$('fpscap').value=String(S.cap);
+ $('pcmode').onchange=e=>{S.pc.mode=e.target.value;apply();};$('pcweaponGesture').onchange=e=>{S.pc.weaponGesture=e.target.value;save();};$('pcsens').oninput=e=>{S.pc.sens=+e.target.value;save();};$('pcsize').oninput=e=>{S.pc.size=+e.target.value;apply();};$('pcop').oninput=e=>{S.pc.op=+e.target.value;apply();};$('pcfs').onchange=e=>{S.pc.fs=e.target.checked;save();};
  $('qual').onchange=e=>{S.q=e.target.value;apply();};$('fpscap').onchange=e=>{S.cap=+e.target.value;save();};
  $('pcedit').onclick=()=>{S.pc.mode==='pc'&&(S.pc.mode='phone',$('pcmode').value='phone',updPhone());tcEdit(true);};$('pcreset').onclick=()=>{S.pc.lay={};save();tcLayout();};})();
 updPhone();tcBuild();
@@ -1224,10 +1228,12 @@ updPhone();tcBuild();
  const el=$('dm');if(!el)return;let drag=null;
  const applySaved=()=>{const p=S.pc.dmPos;if(!p)return;const x=clamp(p.x*innerWidth,0,Math.max(0,innerWidth-el.offsetWidth)),y=clamp(p.y*innerHeight,0,Math.max(0,innerHeight-el.offsetHeight));el.style.left=x+'px';el.style.top=y+'px';el.style.right='auto';el.style.bottom='auto';el.style.transform='none';};
  applySaved();
- el.addEventListener('pointerdown',e=>{if(!PHONE||!playing||tcEditing)return;e.preventDefault();e.stopPropagation();const r=el.getBoundingClientRect();drag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};el.style.left=r.left+'px';el.style.top=r.top+'px';el.style.right='auto';el.style.bottom='auto';el.style.transform='none';el.style.cursor='grabbing';try{el.setPointerCapture(e.pointerId);}catch(_){} });
+ const syncEdit=()=>{el.classList.toggle('layout-editing',!!(PHONE&&playing&&tcEditing));};syncEdit();
+ el.addEventListener('pointerdown',e=>{if(!PHONE||!playing)return;e.preventDefault();e.stopPropagation();const r=el.getBoundingClientRect();drag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};el.style.left=r.left+'px';el.style.top=r.top+'px';el.style.right='auto';el.style.bottom='auto';el.style.transform='none';el.style.cursor='grabbing';try{el.setPointerCapture(e.pointerId);}catch(_){} });
  el.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;e.preventDefault();const x=clamp(e.clientX-drag.dx,0,Math.max(0,innerWidth-el.offsetWidth)),y=clamp(e.clientY-drag.dy,0,Math.max(0,innerHeight-el.offsetHeight));el.style.left=x+'px';el.style.top=y+'px';});
  const finish=e=>{if(!drag||drag.id!==e.pointerId)return;const r=el.getBoundingClientRect();S.pc.dmPos={x:r.left/Math.max(1,innerWidth),y:r.top/Math.max(1,innerHeight)};drag=null;el.style.cursor='grab';save();};
  el.addEventListener('pointerup',finish);el.addEventListener('pointercancel',finish);
+ const editWatch=setInterval(syncEdit,180);
  addEventListener('resize',applySaved);
 })();
 addEventListener('orientationchange',()=>setTimeout(()=>{queueGameResize();tcSync();tcLayout();},300));
