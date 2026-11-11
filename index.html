@@ -156,7 +156,9 @@ nav#tabs{display:flex;gap:6px;margin:6px 0 10px}#tabs .btn.on{color:var(--acc);b
 <label><span>Gap</span><input type="range" id="xg" min="0" max="20"></label></div>
 <div class="sp" data-sp="models" hidden><h3 style="margin:4px 0">Model packs</h3>
 <p>Pick a folder that contains your packs: <b>[pack_name]/model</b> (v_ak47.mdl …) and <b>[pack_name]/sound</b> (ak47-1.wav …). Each pack is stored separately and you choose which one to use.</p>
-<div id="packs"></div><p><button class="btn p" id="addpack">Add pack folder…</button><input type="file" id="packf" webkitdirectory multiple hidden></p><h3 style="margin:12px 0 4px">viewmodel_offset</h3>
+<div id="packs"></div><p><button class="btn p" id="addpack">Add pack folder…</button><input type="file" id="packf" webkitdirectory multiple hidden>
+<button class="btn p" id="addzip">Add pack ZIP…</button><input type="file" id="packz" accept=".zip,application/zip,application/x-zip-compressed,application/octet-stream" multiple hidden></p>
+<p><small>iPhone/iPad: nén pack thành .zip (bên trong có thư mục <b>model</b> và <b>sound</b>, hoặc <b>[tên_pack]/model</b> và <b>[tên_pack]/sound</b>) rồi chọn ZIP ở đây. PC/Android dùng được cả hai cách.</small></p><h3 style="margin:12px 0 4px">viewmodel_offset</h3>
 <label><span>X (left / right)</span><input type="range" id="vox" min="-10" max="10" step="0.1"><b id="voxn"></b></label>
 <label><span>Y (down / up)</span><input type="range" id="voy" min="-10" max="10" step="0.1"><b id="voyn"></b></label>
 <label><span>Z (back / forward)</span><input type="range" id="voz" min="-10" max="10" step="0.1"><b id="vozn"></b></label>
@@ -1012,7 +1014,50 @@ async function importPacks(files){const gr={};for(const f of files){const ps=(f.
 document.querySelectorAll('.stabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.stabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('#t-set .sp').forEach(d=>d.hidden=d.dataset.sp!==b.dataset.s);});
 [['vox','x'],['voy','y'],['voz','z']].forEach(([id,k])=>{const e=$(id),n=$(id+'n');e.value=S.vo[k];n.textContent=(+S.vo[k]).toFixed(1);e.oninput=()=>{S.vo[k]=+e.value;n.textContent=(+e.value).toFixed(1);save();};});
 $('vor').onclick=()=>{S.vo={x:0,y:0,z:0};[['vox','x'],['voy','y'],['voz','z']].forEach(([id,k])=>{$(id).value=0;$(id+'n').textContent='0.0';});save();};
-$('addpack').onclick=()=>$('packf').click();$('packf').onchange=e=>{const l=[...e.target.files];e.target.value='';importPacks(l);};
+/* ---------- ZIP pack import (for iOS, which cannot pick folders) ---------- */
+const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(IS_IOS)$('addpack').style.display='none';
+let pakoP=null;
+const loadPako=()=>pakoP||(pakoP=new Promise((res,rej)=>{if(window.pako)return res();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';s.onload=res;s.onerror=()=>rej(new Error('Không tải được bộ giải nén'));document.head.appendChild(s);}));
+async function inflateRaw(raw){
+ if(window.DecompressionStream){try{return await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();}catch(e){}}
+ await loadPako();const r=pako.inflateRaw(raw);return r.buffer.slice(r.byteOffset,r.byteOffset+r.byteLength);}
+async function readZip(file){
+ const buf=await file.arrayBuffer(),dv=new DataView(buf),u8=new Uint8Array(buf),td=new TextDecoder();let e=-1;
+ for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65557);i--)if(dv.getUint32(i,true)===0x06054b50){e=i;break;}
+ if(e<0)throw new Error(file.name+': không phải file ZIP hợp lệ');
+ const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const out=[];
+ for(let i=0;i<n;i++){if(p+46>buf.byteLength||dv.getUint32(p,true)!==0x02014b50)break;
+  const meth=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+  const name=td.decode(u8.subarray(p+46,p+46+nl));p+=46+nl+el+cl;
+  if(name.endsWith('/')||/(^|\/)(__MACOSX\/|\._)/.test(name)||!/\.(mdl|wav|mp3|ogg)$/i.test(name))continue;
+  if(lo+30>buf.byteLength||dv.getUint32(lo,true)!==0x04034b50)continue;
+  const ds=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true);
+  if(ds+cs>buf.byteLength)throw new Error('Dữ liệu ZIP bị thiếu: '+name);
+  out.push({name,meth,raw:u8.subarray(ds,ds+cs)});}
+ return out;}
+async function zipsToFiles(zips){
+ const res=[];let zi=0;
+ for(const z of zips){loadUI('Đang giải nén '+z.name+'…',(zi++)/zips.length);
+  const base=z.name.replace(/\.zip$/i,'')||'Imported',ents=await readZip(z);
+  for(const en of ents){
+   const segs=en.name.split('/').filter(Boolean).map(s=>/^models?$/i.test(s)?'model':/^sounds?$/i.test(s)?'sound':s);
+   const idx=segs.findIndex(s=>s==='model'||s==='sound');if(idx<0)continue;
+   if(idx===0)segs.unshift(base);
+   let data;
+   if(en.meth===0)data=en.raw.slice().buffer;
+   else if(en.meth===8)data=await inflateRaw(en.raw);
+   else throw new Error('Kiểu nén ZIP không hỗ trợ ('+en.meth+'): '+en.name);
+   res.push({name:segs[segs.length-1],webkitRelativePath:segs.join('/'),arrayBuffer:async()=>data});}}
+ return res;}
+$('addpack').onclick=()=>$('packf').click();
+$('packf').onchange=e=>{const l=[...e.target.files];e.target.value='';importPacks(l);};
+$('addzip').onclick=()=>$('packz').click();
+$('packz').onchange=async e=>{const l=[...e.target.files];e.target.value='';if(!l.length)return;err('');
+ try{loadUI('Đang giải nén…',.05);await new Promise(r=>setTimeout(r,30));const fl=await zipsToFiles(l);loadDone();
+  if(!fl.length){err('ZIP không có thư mục model/ hoặc sound/');return;}
+  await importPacks(fl);}
+ catch(x){loadDone();err('ZIP lỗi: '+(x&&x.message||x));}};
 /* ================= Online multiplayer (Supabase Realtime – Broadcast + Presence, no tables needed) ================= */
 const SB_URL='https://tujgyvpvvpogzvrfpjzi.supabase.co',SB_KEY='sb_publishable_7tNaSOCwlks2GGC2kewyYg_mxxSCSpK';
 const NET_HZ=12;
