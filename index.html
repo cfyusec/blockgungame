@@ -95,6 +95,18 @@ nav#tabs{display:flex;gap:6px;margin:6px 0 10px}#tabs .btn.on{color:var(--acc);b
    single Hide extra HUD option suppress the extra status lines too. */
 #ingamechat{bottom:calc(88px + env(safe-area-inset-bottom,0px))!important;background:rgba(0,0,0,.5)!important;}
 .hide-hud #dm,.hide-hud #nomodel,.hide-hud #lockhint{display:none!important;}
+
+/* Mobile text fields: keep native iOS keyboard and the focused field visible. */
+input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea{
+  min-height:38px;padding:7px 9px;font:16px/1.35 system-ui,sans-serif;color:var(--ink);
+  background:#080b08dd;border:1px solid var(--edge);border-radius:4px;
+  -webkit-appearance:none;appearance:none;touch-action:manipulation;pointer-events:auto;
+}
+input::placeholder,textarea::placeholder{color:var(--mute);opacity:1}
+body.keyboard-open #menu{align-items:flex-start;padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:8px}
+body.keyboard-open #box{max-height:calc(var(--visual-vh,100dvh) - 16px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+body.keyboard-open #bhead{position:sticky;top:0}
+@media(max-width:700px){body.phone input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),body.phone textarea{font-size:16px!important;min-height:42px}}
 </style>
 </head>
 <body>
@@ -122,7 +134,7 @@ nav#tabs{display:flex;gap:6px;margin:6px 0 10px}#tabs .btn.on{color:var(--acc);b
 <h2>Multiplayer</h2>
 <p><button class="btn p" id="mpq">Quick Match</button> <button class="btn" id="mpfindrooms" data-m="list">Find Rooms</button> <button class="btn" data-m="create">Create Room</button></p>
 <div class="mtabs"><button data-m="list" class="on">Room List</button><button data-m="players">Players</button><button data-m="chat">Chat</button></div>
-<div class="mpp" data-mp="list"><div class="chatrow" style="margin:6px 0"><input id="mprfind" maxlength="40" placeholder="Find room by name / code / mode…"><button class="btn" id="mprreset" type="button">Reset</button></div><div id="mprooms"><small>Press Find Rooms to search existing rooms. Searching will not create a room or map.</small></div>
+<div class="mpp" data-mp="list"><div class="chatrow" style="margin:6px 0"><input id="mprfind" maxlength="40" placeholder="Find room by name / code / mode…"><button class="btn" id="mprreset" type="button">Reset</button></div><div id="mprooms"><small>Press Find Rooms to search existing rooms. This only searches; it never creates a room.</small></div>
 <p><input id="mpj" maxlength="4" placeholder="CODE" style="width:84px;text-transform:uppercase"> <input id="mpjp" type="password" maxlength="16" placeholder="password" style="width:110px"> <button class="btn" id="mpg">Join Room</button></p></div>
 <div class="mpp" data-mp="players" hidden><div id="mplist"></div></div>
 <div class="mpp" data-mp="chat" hidden><div id="mpchat" class="chatlog"></div><div class="chatrow"><input id="mpchatin" maxlength="180" placeholder="Message room…"><button class="btn p" id="mpchatsend">Send</button></div></div>
@@ -1168,12 +1180,21 @@ function netLeave(emit){CHR=false;if(CH){const old=CH;CH=null;old.untrack();SB.r
 function netHud(){return'\nROOM '+ROOM+' · '+RS.slice().sort((a,b)=>b.k-a.k).slice(0,4).map(p=>p.name+' '+p.k+'/'+p.d).join(' | ');}
 function mpShowSub(tab){document.querySelectorAll('#t-mp .mtabs button').forEach(x=>x.classList.toggle('on',x.dataset.m===tab));document.querySelectorAll('#t-mp .mpp').forEach(d=>d.hidden=d.dataset.mp!==tab);if(tab==='list')mpList();if(tab==='players')mpRender();}document.querySelectorAll('#t-mp .mtabs button,#t-mp [data-m]').forEach(b=>b.onclick=()=>mpShowSub(b.dataset.m));
 let roomReconnecting=false;function reconnectRoom(){if(roomReconnecting||!ROOM||!CH||!SB)return;roomReconnecting=true;const code=ROOM,cfg=RCFG,keep=Object.assign({},MYP),old=CH;CH=null;CHR=false;SB.removeChannel(old);MYP=keep;mpEnter(code,cfg);Object.assign(MYP,keep);roomReconnecting=false;}
-$('mpc').onclick=()=>mpCreate();$('mpq').onclick=mpQuick;$('mprfind').addEventListener('input',mpRenderRooms);const refreshRoomSearch=()=>{mpList();if(LOBBY){const st=LOBBY.presenceState(),m={};for(const k in st)for(const e of st[k])if(e.code&&Number(e.n)>0)m[e.code]=e;LOB=Object.values(m);}mpRenderRooms();mpSt('Room search refreshed. Select a room to join, or use Quick Match.');};$('mpfindrooms').onclick=refreshRoomSearch;$('mprreset').onclick=()=>{$('mprfind').value='';refreshRoomSearch();};setInterval(()=>{if(ROOM&&CH&&(CH.state==='closed'||CH.state==='errored'))reconnectRoom();},2500);$('mpg').onclick=()=>mpJoin();$('mps').onclick=sbStart;$('mpl').onclick=()=>{netLeave(true);mpSt('Left the room.');};
+$('mpc').onclick=()=>mpCreate();$('mpq').onclick=mpQuick;$('mprfind').addEventListener('input',mpRenderRooms);const refreshRoomSearch=async()=>{const b=$('mpfindrooms');if(b.disabled)return;b.disabled=true;const label=b.textContent;b.textContent='Searching…';mpSt('Searching existing rooms only…');try{mpList();if(LOBBY){await new Promise(r=>setTimeout(r,700));const st=LOBBY.presenceState(),m={};for(const k in st)for(const e of st[k])if(e.code&&Number(e.n)>0)m[e.code]=e;LOB=Object.values(m);}mpRenderRooms();mpSt(LOB.length?'Found '+LOB.length+' existing room(s). Choose one to join.':'No existing rooms found. No room was created.');}catch(e){console.error('[room search]',e);mpSt('Could not search rooms. Try again.');}finally{b.disabled=false;b.textContent=label;}};$('mpfindrooms').onclick=refreshRoomSearch;$('mprreset').onclick=()=>{$('mprfind').value='';refreshRoomSearch();};setInterval(()=>{if(ROOM&&CH&&(CH.state==='closed'||CH.state==='errored'))reconnectRoom();},2500);$('mpg').onclick=()=>mpJoin();$('mps').onclick=sbStart;$('mpl').onclick=()=>{netLeave(true);mpSt('Left the room.');};
 /* ================= PHONE CONTROLS + PERFORMANCE ================= */
 S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,lay:{}},S.pc);S.q=S.q||'auto';S.cap=+S.cap||0;
 const TC={fx:0,fy:0};let PHONE=false,tcShown=false,tcEditing=false,tcSel=null,vmAcc=0,lastDraw=0;
 /* ---- quality helpers (used by the small patches) ---- */
 const IS_TOUCH_DEV=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+// iOS Safari may resize only the visual viewport when its software keyboard opens.
+(function setupMobileKeyboard(){
+ const vv=window.visualViewport;
+ const setVh=()=>{const h=vv?vv.height:window.innerHeight;document.documentElement.style.setProperty('--visual-vh',Math.max(180,h)+'px');};
+ setVh();if(vv)vv.addEventListener('resize',setVh,{passive:true});addEventListener('resize',setVh,{passive:true});
+ const isTextField=e=>e&&((e.tagName==='TEXTAREA')||(e.tagName==='INPUT'&&!/^(button|submit|reset|checkbox|radio|range|color|file|hidden)$/i.test(e.type||'text')));
+ document.addEventListener('focusin',e=>{if(!isTextField(e.target))return;document.body.classList.add('keyboard-open');setVh();setTimeout(()=>{const el=e.target;if(!el||!el.isConnected)return;try{el.scrollIntoView({block:'center',inline:'nearest',behavior:'smooth'});}catch(_){el.scrollIntoView(false);}},220);});
+ document.addEventListener('focusout',()=>setTimeout(()=>{if(!isTextField(document.activeElement))document.body.classList.remove('keyboard-open');},180));
+})();
 const Q=()=>S.q==='auto'||!S.q?(IS_TOUCH_DEV?'low':'high'):S.q;
 const qPR=()=>{const q=Q(),d=devicePixelRatio||1;if(S.style==='retro')return S.scale;return Math.max(.5,(q==='low'?Math.min(d,1):q==='med'?Math.min(d,1.5):Math.min(d,2))*(S.scale||1));};
 const QF=()=>Q()==='low'?1:Q()==='med'?1.6:2.2;
@@ -1285,7 +1306,7 @@ updPhone();tcBuild();
 })();
 addEventListener('orientationchange',()=>setTimeout(()=>{queueGameResize();tcSync();tcLayout();},300));
 document.addEventListener('gesturestart',e=>e.preventDefault());
-document.addEventListener('touchmove',e=>{if(PHONE&&(playing||tcEditing))e.preventDefault();},{passive:false});
+document.addEventListener('touchmove',e=>{if(PHONE&&(playing||tcEditing)&&!(e.target&&e.target.closest&&e.target.closest('#menu,input,textarea,select,button')))e.preventDefault();},{passive:false});
 addEventListener('touchstart',()=>{try{audioOutput();}catch(e){}},{once:true,passive:true});
 
 /* ---------- Loop ---------- */
