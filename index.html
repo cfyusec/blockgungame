@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -96,17 +96,17 @@ nav#tabs{display:flex;gap:6px;margin:6px 0 10px}#tabs .btn.on{color:var(--acc);b
 #ingamechat{bottom:calc(88px + env(safe-area-inset-bottom,0px))!important;background:rgba(0,0,0,.5)!important;}
 .hide-hud #dm,.hide-hud #nomodel,.hide-hud #lockhint{display:none!important;}
 
-/* Mobile text fields: keep native iOS keyboard and the focused field visible. */
+/* iOS keyboard: preserve native input focus and give Safari a real visual-viewport-sized area. */
 input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea{
-  min-height:38px;padding:7px 9px;font:16px/1.35 system-ui,sans-serif;color:var(--ink);
+  min-height:42px;padding:8px 10px;font:16px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--ink);
   background:#080b08dd;border:1px solid var(--edge);border-radius:4px;
-  -webkit-appearance:none;appearance:none;touch-action:manipulation;pointer-events:auto;
+  -webkit-appearance:none;appearance:none;pointer-events:auto;touch-action:auto;
 }
 input::placeholder,textarea::placeholder{color:var(--mute);opacity:1}
-body.keyboard-open #menu{align-items:flex-start;padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:8px}
-body.keyboard-open #box{max-height:calc(var(--visual-vh,100dvh) - 16px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+body.keyboard-open #menu{height:var(--visual-vh,100vh);max-height:var(--visual-vh,100vh);align-items:flex-start;justify-content:flex-start;padding:8px;overflow:hidden}
+body.keyboard-open #box{height:100%;max-height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 body.keyboard-open #bhead{position:sticky;top:0}
-@media(max-width:700px){body.phone input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),body.phone textarea{font-size:16px!important;min-height:42px}}
+@media(max-width:700px){body.phone input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),body.phone textarea{font-size:16px!important;min-height:44px}}
 </style>
 </head>
 <body>
@@ -1186,14 +1186,41 @@ S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,lay:{}},S.pc);S.q=
 const TC={fx:0,fy:0};let PHONE=false,tcShown=false,tcEditing=false,tcSel=null,vmAcc=0,lastDraw=0;
 /* ---- quality helpers (used by the small patches) ---- */
 const IS_TOUCH_DEV=('ontouchstart' in window)||navigator.maxTouchPoints>0;
-// iOS Safari may resize only the visual viewport when its software keyboard opens.
+// Keep focused fields inside the visible Safari area without scrollIntoView(),
+// which can dismiss or mis-position the native keyboard on iOS.
 (function setupMobileKeyboard(){
  const vv=window.visualViewport;
- const setVh=()=>{const h=vv?vv.height:window.innerHeight;document.documentElement.style.setProperty('--visual-vh',Math.max(180,h)+'px');};
- setVh();if(vv)vv.addEventListener('resize',setVh,{passive:true});addEventListener('resize',setVh,{passive:true});
+ let focusTarget=null, raf=0;
+ const setVh=()=>{
+   const h=vv?vv.height:window.innerHeight;
+   document.documentElement.style.setProperty('--visual-vh',Math.max(180,Math.round(h))+'px');
+   if(focusTarget) keepFieldVisible();
+ };
  const isTextField=e=>e&&((e.tagName==='TEXTAREA')||(e.tagName==='INPUT'&&!/^(button|submit|reset|checkbox|radio|range|color|file|hidden)$/i.test(e.type||'text')));
- document.addEventListener('focusin',e=>{if(!isTextField(e.target))return;document.body.classList.add('keyboard-open');setVh();setTimeout(()=>{const el=e.target;if(!el||!el.isConnected)return;try{el.scrollIntoView({block:'center',inline:'nearest',behavior:'smooth'});}catch(_){el.scrollIntoView(false);}},220);});
- document.addEventListener('focusout',()=>setTimeout(()=>{if(!isTextField(document.activeElement))document.body.classList.remove('keyboard-open');},180));
+ function keepFieldVisible(){
+   if(!focusTarget||!focusTarget.isConnected)return;
+   cancelAnimationFrame(raf);
+   raf=requestAnimationFrame(()=>{
+     const el=focusTarget, box=document.getElementById('box');
+     if(!el||!el.isConnected||!box)return;
+     const r=el.getBoundingClientRect(), b=box.getBoundingClientRect();
+     const margin=24;
+     if(r.bottom>b.bottom-margin)box.scrollTop+=r.bottom-(b.bottom-margin);
+     else if(r.top<b.top+margin)box.scrollTop-=((b.top+margin)-r.top);
+   });
+ }
+ setVh();
+ if(vv){vv.addEventListener('resize',setVh,{passive:true});vv.addEventListener('scroll',setVh,{passive:true});}
+ addEventListener('resize',setVh,{passive:true});
+ document.addEventListener('focusin',e=>{
+   if(!isTextField(e.target))return;
+   focusTarget=e.target;document.body.classList.add('keyboard-open');setVh();
+   // Wait for iOS to finish opening the keyboard; do not steal focus or smooth-scroll.
+   setTimeout(keepFieldVisible,350);
+ });
+ document.addEventListener('focusout',()=>setTimeout(()=>{
+   if(!isTextField(document.activeElement)){focusTarget=null;document.body.classList.remove('keyboard-open');setVh();}
+ },250));
 })();
 const Q=()=>S.q==='auto'||!S.q?(IS_TOUCH_DEV?'low':'high'):S.q;
 const qPR=()=>{const q=Q(),d=devicePixelRatio||1;if(S.style==='retro')return S.scale;return Math.max(.5,(q==='low'?Math.min(d,1):q==='med'?Math.min(d,1.5):Math.min(d,2))*(S.scale||1));};
