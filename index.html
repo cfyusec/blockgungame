@@ -1297,7 +1297,7 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
  // Track touch pointers globally in capture phase: a finger can begin on FIRE/JUMP/etc.
  // and still drag to turn the camera without cancelling the button press.
  const lookPointers=new Map();
- document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||e.pointerType!=='touch'||(e.target&&e.target.closest&&(e.target.closest('#dm')||e.target.closest('.tcb')||e.target.closest('#tcbar')))||e.clientX<innerWidth*.42)return;lookPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});},{capture:true});
+ document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||e.pointerType!=='touch')return;const btn=e.target&&e.target.closest?e.target.closest('.tcb'):null;if(e.target&&e.target.closest&&(e.target.closest('#dm')||e.target.closest('#tcbar')))return;if(btn&&btn.dataset.id==='weapon')return;if(e.clientX<innerWidth*.42&&!btn)return;lookPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});},{capture:true});
  document.addEventListener('pointermove',e=>{const prev=lookPointers.get(e.pointerId);if(!prev||tcEditing)return;const s=S.sens*0.0011*S.pc.sens*(zoomFov?zoomFov/S.fov:1);yaw-=(e.clientX-prev.x)*s;pitch=clamp(pitch-(e.clientY-prev.y)*s,-1.5,1.5);prev.x=e.clientX;prev.y=e.clientY;},{capture:true});
  const stopLook=e=>{lookPointers.delete(e.pointerId);};document.addEventListener('pointerup',stopLook,{capture:true});document.addEventListener('pointercancel',stopLook,{capture:true});
  $('tcdone').onclick=()=>tcEdit(false);$('tcrst').onclick=()=>{S.pc.lay={};save();tcLayout();};$('tcplus').onclick=()=>tcScale(1.1);$('tcmin').onclick=()=>tcScale(1/1.1);
