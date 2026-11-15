@@ -107,6 +107,12 @@ body.keyboard-open #menu{height:var(--visual-vh,100vh);max-height:var(--visual-v
 body.keyboard-open #box{height:100%;max-height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 body.keyboard-open #bhead{position:sticky;top:0}
 @media(max-width:700px){body.phone input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),body.phone textarea{font-size:16px!important;min-height:44px}}
+/* Phone HUD (Standoff-style): the old single info block and bars are replaced by draggable blocks */
+body.phone #dm,body.phone #bars,body.phone #money{display:none!important}
+body.phone #fps{top:calc(2px + env(safe-area-inset-top,0px));right:6px;font-size:11px}
+body.phone #msg{top:24%;font-size:15px}
+body.phone #killfeed{top:calc(78px + env(safe-area-inset-top,0px))}
+body.phone #ingamechat{top:auto!important;bottom:26%!important;left:8px!important;width:22vw!important}
 </style>
 </head>
 <body>
@@ -125,7 +131,7 @@ body.keyboard-open #bhead{position:sticky;top:0}
 <label><span>Frag limit</span><input type="number" id="gf" min="5" max="200" style="width:60px"></label>
 <label><span>Time limit (min, 0 = off)</span><input type="number" id="gt" min="0" max="60" style="width:60px"></label></div></div>
 <p style="margin:10px 0"><button class="btn p" id="go">Start</button> </p>
-<details class="opt"><summary>Controls / Help</summary><p><kbd>WASD</kbd> move · <kbd>Space</kbd>/wheel jump · <kbd>LMB</kbd> fire · <kbd>RMB</kbd> stab / scope (Scout, AWP) / silencer (M4A1, USP) · <kbd>R</kbd> reload · <kbd>F</kbd> inspect · <kbd>B</kbd> buy menu · <kbd>C</kbd>/<kbd>Ctrl</kbd> crouch · <kbd>Shift</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> weapons · <kbd>E</kbd> pick up · <kbd>G</kbd> drop · <kbd>H</kbd> swap hand · <kbd>V</kbd> 3rd person · <kbd>T</kbd> restart · <kbd>~</kbd> menu · <kbd>[</kbd> <kbd>]</kbd> cycle animations · Numpad <kbd>0</kbd>–<kbd>9</kbd> play sequence</p></details>
+<details class="opt"><summary>Controls / Help</summary><p><kbd>WASD</kbd> move · <kbd>Space</kbd>/wheel jump · <kbd>LMB</kbd> fire · <kbd>RMB</kbd> stab / scope (Scout, AWP) / silencer (M4A1, USP) · <kbd>R</kbd> reload · <kbd>F</kbd> inspect · <kbd>B</kbd> buy menu · <kbd>C</kbd>/<kbd>Ctrl</kbd> crouch · <kbd>Shift</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> weapons · <kbd>4</kbd> grenades (press again to switch HE / Flash / Smoke) · <kbd>E</kbd> pick up · <kbd>G</kbd> drop · <kbd>H</kbd> swap hand · <kbd>V</kbd> 3rd person · <kbd>T</kbd> restart · <kbd>~</kbd> menu · <kbd>[</kbd> <kbd>]</kbd> cycle animations · Numpad <kbd>0</kbd>–<kbd>9</kbd> play sequence</p></details>
 <details class="opt"><summary>Model details</summary><div id="info"></div></details>
 </section>
 <section class="tab" id="t-maps"><h2>Map files</h2><p>BSP files you add are saved in this browser and appear in the New Game map list.</p>
@@ -631,7 +637,7 @@ document.addEventListener('keydown',e=>{
  if(e.code==='KeyR'&&!e.repeat)startReload();if(e.code==='KeyE'&&!e.repeat)usePickup();if(e.code==='KeyG'&&!e.repeat){if(!bombThrow())dropGun();}if(e.code==='KeyN'&&!e.repeat)placeBlock();if(e.code==='KeyZ'&&!e.repeat)undoBlock();if(e.code==='KeyF'&&!e.repeat)act('inspect');
  if(e.code==='KeyH'&&!e.repeat){S.hand=S.hand==='R'?'L':'R';save();applyUI();flash(S.hand==='L'?'Left hand':'Right hand');}
  const dm=/^(Digit|Numpad)(\d)$/.exec(e.code);
- if(dm&&!e.repeat){if(dm[1]==='Digit'){const n=+dm[2];if(n>=1&&n<=3)selSlot(n-1);else if(n===5)cycleNade();}else anim((+dm[2]+9)%10+(e.shiftKey?10:0));}
+ if(dm&&!e.repeat){if(dm[1]==='Digit'){const n=+dm[2];if(n>=1&&n<=3)selSlot(n-1);else if(n===4||n===5)cycleNade();}else anim((+dm[2]+9)%10+(e.shiftKey?10:0));}
  
  if(e.code.startsWith('Arrow'))e.preventDefault();});
 document.addEventListener('keyup',e=>{K[e.code]=false;if(e.code==='Tab'){const sb=$('scoreboard');if(sb)sb.style.display='none';}});
@@ -1182,7 +1188,7 @@ function mpShowSub(tab){document.querySelectorAll('#t-mp .mtabs button').forEach
 let roomReconnecting=false;function reconnectRoom(){if(roomReconnecting||!ROOM||!CH||!SB)return;roomReconnecting=true;const code=ROOM,cfg=RCFG,keep=Object.assign({},MYP),old=CH;CH=null;CHR=false;SB.removeChannel(old);MYP=keep;mpEnter(code,cfg);Object.assign(MYP,keep);roomReconnecting=false;}
 $('mpc').onclick=()=>mpCreate();$('mpq').onclick=mpQuick;$('mprfind').addEventListener('input',mpRenderRooms);const refreshRoomSearch=async()=>{const b=$('mpfindrooms');if(b.disabled)return;b.disabled=true;const label=b.textContent;b.textContent='Searching…';mpSt('Searching existing rooms only…');try{mpList();if(LOBBY){await new Promise(r=>setTimeout(r,700));const st=LOBBY.presenceState(),m={};for(const k in st)for(const e of st[k])if(e.code&&Number(e.n)>0)m[e.code]=e;LOB=Object.values(m);}mpRenderRooms();mpSt(LOB.length?'Found '+LOB.length+' existing room(s). Choose one to join.':'No existing rooms found. No room was created.');}catch(e){console.error('[room search]',e);mpSt('Could not search rooms. Try again.');}finally{b.disabled=false;b.textContent=label;}};$('mpfindrooms').onclick=refreshRoomSearch;$('mprreset').onclick=()=>{$('mprfind').value='';refreshRoomSearch();};setInterval(()=>{if(ROOM&&CH&&(CH.state==='closed'||CH.state==='errored'))reconnectRoom();},2500);$('mpg').onclick=()=>mpJoin();$('mps').onclick=sbStart;$('mpl').onclick=()=>{netLeave(true);mpSt('Left the room.');};
 /* ================= PHONE CONTROLS + PERFORMANCE ================= */
-S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,lay:{}},S.pc);S.q=S.q||'auto';S.cap=+S.cap||0;
+S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,tap:true,lay:{}},S.pc);S.q=S.q||'auto';S.cap=+S.cap||0;
 const TC={fx:0,fy:0};let PHONE=false,tcShown=false,tcEditing=false,tcSel=null,vmAcc=0,lastDraw=0;
 /* ---- quality helpers (used by the small patches) ---- */
 const IS_TOUCH_DEV=('ontouchstart' in window)||navigator.maxTouchPoints>0;
@@ -1228,27 +1234,33 @@ const QF=()=>Q()==='low'?1:Q()==='med'?1.6:2.2;
 const QCAP=()=>Q()==='low'?{spl:30,hole:30}:Q()==='med'?{spl:60,hole:50}:{spl:90,hole:80};
 const TRG=new THREE.BoxGeometry(.8,.8,1);
 function applyFog(){if(!world)return;const f=Q()==='low'?.6:Q()==='med'?.8:1;scene.fog=new THREE.Fog(SKY,world.fog[0]*f,world.fog[1]*f);cam.far=world.fog[1]*f+1500;cam.updateProjectionMatrix();}
-/* ---- touch UI definition: id, label, x%, y%, size px ---- */
-const TCB=[['fire','FIRE',90,72,88],['jump','JUMP',77,86,64],['duck','DUCK',93,46,52],['reload','R',68,72,54],['alt','ALT',80,62,52],['use','USE',66,88,52],
- ['weapon','WEAPON',89,22,54],['buy','BUY',4,24,46],['drop','DROP',4,38,46],['insp','F',12,24,40],['menu','☰',4,8,42],['tab','TAB',11,8,40],['chat','CHAT',18,8,40]];
-const TCA={fire:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],jump:[()=>{K.Space=true;P.jb=.1;},()=>{K.Space=false;}],alt:[()=>{mh2=true;stab();},()=>{mh2=false;}],
+/* ---- touch UI (Standoff-style): id, label, x%, y%, size px, shape ('r' = weapon slot rectangle) ---- */
+const TCB=[['fire','FIRE',89,68,88],['fire2','FIRE',27,56,62],['jump','JUMP',73,85,58],['reload','R',69,63,48],['alt','ALT',96,44,46],['duck','DUCK',95,89,44],['use','USE',58,86,46],
+ ['w1','',57,12,0,'r'],['w2','',66,12,0,'r'],['w3','',75,12,0,'r'],['w4','',84,12,0,'r'],
+ ['buy',"BUY",3,27,42],['drop','DROP',3,40,42],['insp','F',12,27,38],['menu','☰',3,8,38],['tab','TAB',11,8,36],['chat','CHAT',19,8,36]];
+const TCA={fire:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],fire2:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],
+ jump:[()=>{K.Space=true;P.jb=.1;},()=>{K.Space=false;}],alt:[()=>{mh2=true;stab();},()=>{mh2=false;}],
  use:[()=>{K.KeyE=true;usePickup();},()=>{K.KeyE=false;}],reload:[()=>startReload()],buy:[()=>openBuy()],
  drop:[()=>{if(!bombThrow())dropGun();}],insp:[()=>act('inspect')],menu:[()=>pause()],chat:[()=>igcOpenChat('global')],
- duck:[b=>{K.KeyC=!K.KeyC;b.classList.toggle('on',!!K.KeyC);}],
+ duck:[()=>{K.KeyC=true;},()=>{K.KeyC=false;}],
+ w1:[()=>selSlot(0)],w2:[()=>selSlot(1)],w3:[()=>selSlot(2)],w4:[()=>cycleNade()],
  tab:[()=>{const sb=$('scoreboard');if(sb.style.display!=='flex'){renderScoreboard();sb.style.display='flex';}else sb.style.display='none';}]};
 (function(){const st=document.createElement('style');st.textContent=`
 #touch{position:fixed;inset:0;z-index:9000;display:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #tcrotate{display:none;position:fixed;inset:0;z-index:9999999;background:#080a07;color:#ffb000;align-items:center;justify-content:center;text-align:center;padding:24px;font:700 18px/1.5 system-ui,sans-serif;touch-action:none}
 @media (orientation:portrait){body.phone.playing-touch #tcrotate{display:flex}body.phone.playing-touch #touch{visibility:hidden}}
 #tcmove,#tclook{position:absolute;top:0;bottom:0;touch-action:none}#tcmove{left:0;width:42%}#tclook{left:42%;right:0}
-.tcb{position:absolute;transform:translate(-50%,-50%);border-radius:50%;border:2px solid rgba(255,255,255,.8);background:rgba(20,24,18,.55);color:#fff;font:700 13px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;touch-action:none;-webkit-tap-highlight-color:transparent;text-shadow:1px 1px 0 #000;user-select:none}
-.tcb.act{background:rgba(255,176,0,.8);color:#000}.tcb.on{background:rgba(255,176,0,.65);color:#000}.tcb.sel{outline:3px dashed #ffb000;outline-offset:3px}
-/* One Standoff-style weapon selector: swipe left/right for guns, up/down to cycle grenades */
-.tcb.weapon-current{border-radius:10px!important;border:2px solid rgba(255,176,0,.95)!important;background:rgba(12,16,20,.86)!important;width:auto;height:auto;font-size:inherit;letter-spacing:.2px;white-space:nowrap;padding:0 8px;box-sizing:border-box;color:#ffe0a0;box-shadow:0 0 9px #ffb00044;touch-action:none}
-.tcb.weapon-current:after{content:'‹  ›';position:absolute;right:5px;bottom:1px;font-size:9px;opacity:.65}
+.tcb{position:absolute;transform:translate(-50%,-50%);border-radius:50%;border:1.6px solid rgba(255,255,255,.66);background:linear-gradient(145deg,rgba(31,38,46,.72),rgba(7,12,18,.58));color:#f7f9fc;font:700 10px system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;box-shadow:0 2px 9px #0008,inset 0 1px 2px #ffffff24;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.tcb .tc-ico{width:48%;height:48%;display:block;flex:none;filter:drop-shadow(0 1px 1px #0009)}.tcb .tc-cap{font:700 8px/1 system-ui,sans-serif;letter-spacing:.55px;color:#e7edf5;text-shadow:0 1px 2px #000;opacity:.9}
+.tcb.act{background:linear-gradient(145deg,rgba(255,255,255,.42),rgba(115,139,161,.48));border-color:#fff;transform:translate(-50%,-50%) scale(.94)}.tcb.on{background:rgba(255,255,255,.35);border-color:#fff;color:#fff}.tcb.sel{outline:3px dashed #ffb000;outline-offset:3px}
+.tcb.tgl::after{content:'T';position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:#ffb000;color:#000;font:700 9px/14px system-ui,sans-serif;text-align:center}
+.tcb[data-id="fire"],.tcb[data-id="fire2"]{border-color:rgba(255,255,255,.92);background:linear-gradient(145deg,rgba(170,49,42,.8),rgba(75,17,20,.78));box-shadow:0 2px 12px #0009,inset 0 1px 3px #ffffff35}.tcb[data-id="fire"] .tc-ico,.tcb[data-id="fire2"] .tc-ico{width:53%;height:53%}
+.tcb[data-id="jump"],.tcb[data-id="duck"],.tcb[data-id="reload"],.tcb[data-id="alt"]{background:linear-gradient(145deg,rgba(48,57,67,.78),rgba(10,16,23,.7))}
+/* Weapon slot bar (tap to equip, like Standoff 2) */
+.tcb.slot{border-radius:7px;flex-direction:row;gap:5px;white-space:nowrap;font-weight:700;letter-spacing:.2px}
+.tcb.slot b{opacity:.65;font-weight:700}
+.tcb.slot.cur{border-color:#ffb000;background:linear-gradient(145deg,rgba(255,176,0,.5),rgba(120,70,0,.55));color:#fff}
 #tcbar{touch-action:none;user-select:none;-webkit-user-select:none}
-body.phone #dm.layout-editing{pointer-events:auto!important;outline:2px dashed #ffb000;outline-offset:4px;background:rgba(0,0,0,.72);cursor:grab!important;z-index:9200!important}
-body.phone #dm.layout-editing:after{content:'  DRAG INFO';display:block;font:700 9px system-ui,sans-serif;letter-spacing:1px;color:#ffb000;text-align:center}
 #tcbar .tc-grip{flex-basis:100%;display:block;text-align:center;font-size:11px;color:var(--mute);padding:5px 12px;cursor:move;touch-action:none;border-top:1px solid #ffffff22;white-space:nowrap}
 #tcstick{position:absolute;display:none;pointer-events:none;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.08)}
 #tcknob{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);left:50%;top:50%;transform:translate(-50%,-50%)}
@@ -1256,51 +1268,63 @@ body.phone #dm.layout-editing:after{content:'  DRAG INFO';display:block;font:700
 html,body,canvas,#touch,.tcb,#tcmove,#tclook{touch-action:none}#menu,#box{touch-action:pan-y;-webkit-overflow-scrolling:touch}
 body.phone{overscroll-behavior:none;-webkit-text-size-adjust:100%}body.phone .tcb{ -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
 body.phone .btn{padding:10px 16px}body.phone .mi{font-size:26px;padding:6px 8px 6px 0}body.phone input[type=range]{height:28px}body.phone select{padding:8px}
-body.phone #hud{display:none}body.phone #dm{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px));right:50%;transform:translateX(50%);text-align:center;font-size:12px}
-body.phone #ingamechat{bottom:auto!important;top:64px;left:10px}body.phone #bars{bottom:calc(8px + env(safe-area-inset-bottom,0px));width:min(240px,40vw)}body.phone #lockhint{display:none!important}`;document.head.appendChild(st);})();
+body.phone #hud{display:none}body.phone #lockhint{display:none!important}`;document.head.appendChild(st);})();
 /* ---- helpers ---- */
 function updPhone(){PHONE=S.pc.mode==='phone'||(S.pc.mode==='auto'&&IS_TOUCH_DEV);document.body.classList.toggle('phone',PHONE);return PHONE;}
+const TGL=['fire','fire2','jump','alt','use','duck'];
+const isTgl=id=>{const l=S.pc.lay[id];return TGL.includes(id)&&(l&&l.t!==undefined?!!l.t:id==='duck');};
 function tcPos(id){const d=TCB.find(a=>a[0]===id),l=S.pc.lay[id]||{};return{x:l.x??d[2],y:l.y??d[3],s:l.s||1,on:l.on!==false};}
-function tcLayout(){hudLayout();const t=$('touch');if(!t)return;t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id,d=TCB.find(a=>a[0]===id);if(!d)return;const p=tcPos(id),sz=d[4]*S.pc.size*p.s;
- b.style.left=p.x+'%';b.style.top=p.y+'%';
- if(id==='weapon'){b.style.width=(116*S.pc.size*p.s)+'px';b.style.height=(46*S.pc.size*p.s)+'px';b.style.fontSize=Math.max(9,12*S.pc.size*p.s)+'px';}
- else{b.style.width=sz+'px';b.style.height=sz+'px';b.style.fontSize=Math.max(10,sz*.26)+'px';}
- b.style.opacity=p.on?S.pc.op:(tcEditing?.2:0);b.style.display=(p.on||tcEditing)?'flex':'none';b.classList.toggle('sel',tcEditing&&tcSel===id);
- if(id==='weapon'){b.classList.add('weapon-current');const wid=S.load&&S.load[cs],w=wid&&WBY[wid];const count=cs>=3&&GN[wid]!==undefined?' ×'+GN[wid]:'';b.textContent=(w?w.name:'EMPTY')+count;b.title='Swipe right: pistol · Swipe down: primary · Swipe left: knife · Swipe up: next grenade';}else b.classList.remove('weapon-current');});}
+const WSHORT={ak47:'AK-47',m4a1:'M4A1',usp:'USP',glock18:'GLOCK',deagle:'DEAGLE',awp:'AWP',scout:'SCOUT',galil:'GALIL',famas:'FAMAS',mp5navy:'MP5',p90:'P90',p228:'P228',fiveseven:'57',elite:'ELITE',tmp:'TMP',mac10:'MAC10',ump45:'UMP45',m249:'M249',knife:'KNIFE'};
+function tcSlots(){const t=$('touch');if(!t)return;for(let n=0;n<4;n++){const b=t.querySelector('[data-id="w'+(n+1)+'"]');if(!b)continue;let id,txt;
+  if(n<3){id=S.load[n];txt=id?(WSHORT[id]||id.toUpperCase()):'—';}
+  else{id=(cs>=3?S.load[cs]:[3,4,5].map(k=>S.load[k]).find(g=>GN[g]>0))||S.load[3];txt=({hegrenade:'HE',flashbang:'FB',smokegrenade:'SG'}[id]||'')+' '+(GN[id]||0);}
+  const on=n<3?cs===n:cs>=3,h='<b>'+(n+1)+'</b>'+esc(txt);
+  if(b._k!==h+on){b._k=h+on;b.innerHTML=h;b.classList.toggle('cur',on);}}}
+function tcLayout(){hudLayout();const t=$('touch');if(!t)return;t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id,d=TCB.find(a=>a[0]===id);if(!d)return;const p=tcPos(id),rect=d[5]==='r',k=S.pc.size*p.s,w=rect?66*k:d[4]*k,h=rect?36*k:w;
+ b.style.left=p.x+'%';b.style.top=p.y+'%';b.style.width=w+'px';b.style.height=h+'px';b.style.fontSize=(rect?Math.max(9,11*k):Math.max(10,w*.26))+'px';
+ b.style.opacity=p.on?S.pc.op:(tcEditing?.2:0);b.style.display=(p.on||tcEditing)?'flex':'none';b.classList.toggle('sel',tcEditing&&tcSel===id);b.classList.toggle('tgl',isTgl(id));});tcSlots();}
 function tcScale(f){if(!tcSel)return;const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.s=clamp((l.s||1)*f,.5,2.2);save();tcLayout();}
 function tcEdit(on){tcEditing=on;$('tcbar').style.display=on?'flex':'none';tcSel=null;if(on)$('menu').style.display='none';else{$('menu').style.display='flex';panel('set','Settings');}tcLayout();tcSync();}
 function tcSync(){const hv=!!(PHONE&&(playing||tcEditing));if(hv!==hudVis){hudVis=hv;hudLayout();}document.body.classList.toggle('playing-touch',!!(PHONE&&playing));const want=tcEditing||(PHONE&&playing&&!buyOpen&&!matchEnding);if(want!==tcShown){tcShown=want;$('touch').style.display=want?'block':'none';
- if(!want){TC.fx=TC.fy=0;K.KeyC=K.Space=K.KeyE=false;mh=mh2=false;document.querySelectorAll('.tcb.on').forEach(b=>b.classList.remove('on'));}}}
+ if(!want){TC.fx=TC.fy=0;K.KeyC=K.Space=K.KeyE=false;mh=mh2=false;document.querySelectorAll('.tcb').forEach(b=>{b._on=false;b.classList.remove('on','act');});}}}
 function tcEnter(){if(!S.pc.fs)return;const e=document.documentElement;const lock=()=>{try{const o=screen.orientation;if(o&&o.lock){const p=o.lock('landscape');if(p&&p.catch)p.catch(()=>{});}}catch(_){}};try{if(!document.fullscreenElement&&e.requestFullscreen){const r=e.requestFullscreen({navigationUI:'hide'});if(r&&r.then)r.then(lock).catch(()=>{});else lock();}else{if(e.webkitRequestFullscreen)e.webkitRequestFullscreen();lock();}}catch(_){lock();}}
+function lookBy(dx,dy){const s=S.sens*0.0011*S.pc.sens*(zoomFov?zoomFov/S.fov:1);yaw-=dx*s;pitch=clamp(pitch-dy*s,-1.5,1.5);}
 function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot.textContent='↻  Rotate your device to landscape to play';document.body.appendChild(rot);
  const t=document.createElement('div');t.id='touch';t.innerHTML='<div id="tcmove"></div><div id="tclook"></div><div id="tcstick"><div id="tcknob"></div></div>';document.body.appendChild(t);
- for(const a of TCB){const b=document.createElement('div');b.className='tcb';b.dataset.id=a[0];b.textContent=a[1];t.appendChild(b);}
- const bar=document.createElement('div');bar.id='tcbar';bar.innerHTML='<button class="btn p" id="tcdone">Done</button><button class="btn" id="tcmin">−</button><button class="btn" id="tcplus">+</button><button class="btn" id="tchide">Hide/Show</button><button class="btn" id="tcrst">Reset</button><span class="tc-grip" id="tcgrip">⠿ HOLD HERE TO MOVE PANEL · Drag buttons to arrange · − / + resize</span>';document.body.appendChild(bar);
+ const tcGlyph={fire:'<path d="M5 12h8l-2-2m2 2-2 2M14 5l5 7-5 7"/>',fire2:'<path d="M5 12h8l-2-2m2 2-2 2M14 5l5 7-5 7"/>',jump:'<path d="M12 19V5m-5 6 5-6 5 6"/>',duck:'<path d="M5 16h14M7 16l2-5h6l2 5M10 8h4"/>',reload:'<path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5M4 13a8 8 0 0 0 14 5l2-2m0 5v-5h-5"/>',alt:'<path d="M4 12h16M12 4v16M7 7l10 10m0-10L7 17"/>',use:'<path d="M7 12h10M12 7v10M5 5l14 14"/>',buy:'<path d="M4 7h16l-1 13H5L4 7Zm4 0a4 4 0 0 1 8 0"/>',drop:'<path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/>',insp:'<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',tab:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 13h6"/>',chat:'<path d="M4 5h16v12H9l-5 3V5Z"/>'};
+ for(const a of TCB){const b=document.createElement('div');b.className='tcb'+(a[5]==='r'?' slot':'');b.dataset.id=a[0];b.title=a[1];if(a[5]!=='r'){b.innerHTML='<svg class="tc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(tcGlyph[a[0]]||'')+'</svg><span class="tc-cap">'+a[1]+'</span>';}t.appendChild(b);}
+ const bar=document.createElement('div');bar.id='tcbar';bar.innerHTML='<button class="btn p" id="tcdone">Done</button><button class="btn" id="tcmin">−</button><button class="btn" id="tcplus">+</button><button class="btn" id="tchide">Hide/Show</button><button class="btn" id="tctog">Toggle/Hold</button><button class="btn" id="tcrst">Reset</button><span class="tc-grip" id="tcgrip">⠿ HOLD HERE TO MOVE PANEL · Drag buttons / HUD blocks · − / + resize</span>';document.body.appendChild(bar);
  // The layout editor panel itself can be moved so it never has to cover weapon slots.
  const grip=$('tcgrip');let barDrag=null;
  grip.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const r=bar.getBoundingClientRect();barDrag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};try{grip.setPointerCapture(e.pointerId);}catch(_){}bar.style.transform='none';});
  grip.addEventListener('pointermove',e=>{if(!barDrag||barDrag.id!==e.pointerId)return;const x=clamp(e.clientX-barDrag.dx,0,innerWidth-bar.offsetWidth),y=clamp(e.clientY-barDrag.dy,0,innerHeight-bar.offsetHeight);bar.style.left=x+'px';bar.style.top=y+'px';});
  const barUp=e=>{if(barDrag&&barDrag.id===e.pointerId){barDrag=null;}};grip.addEventListener('pointerup',barUp);grip.addEventListener('pointercancel',barUp);
- t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id;let drag=null,weaponSwipe=null;
+ t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id;let drag=null,aim=null,held=false;const hasAim=TGL.includes(id);
   b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();try{b.setPointerCapture(e.pointerId);}catch(_){}
    if(tcEditing){tcSel=id;const p=tcPos(id);drag={dx:e.clientX/innerWidth*100-p.x,dy:e.clientY/innerHeight*100-p.y};tcLayout();return;}
-   if(id==='weapon'){weaponSwipe={x:e.clientX,y:e.clientY};b.classList.add('act');return;}
-   b.classList.add('act');const a=TCA[id];if(a&&a[0])a[0](b);});
-  b.addEventListener('pointermove',e=>{if(weaponSwipe){return;}if(!tcEditing||!drag)return;const l=S.pc.lay[id]=S.pc.lay[id]||{};l.x=clamp(e.clientX/innerWidth*100-drag.dx,2,98);l.y=clamp(e.clientY/innerHeight*100-drag.dy,3,97);tcLayout();});
-  const up=e=>{if(tcEditing){drag=null;save();return;}b.classList.remove('act');if(weaponSwipe){const g=weaponSwipe;weaponSwipe=null;const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.max(Math.abs(dx),Math.abs(dy))>28){if(Math.abs(dy)>Math.abs(dx)){if(dy<0){swipeNade(1);}else{equip(0);if(typeof tcLayout==='function')tcLayout();}}else{const target=dx>0?1:2; if(S.load&&S.load[target]){equip(target);if(typeof tcLayout==='function')tcLayout();}else{flash(target===1?'No pistol equipped':'No knife equipped');}}}return;}const a=TCA[id];if(a&&a[1])a[1](b);};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',e=>{weaponSwipe=null;drag=null;b.classList.remove('act');});});
- const mv=$('tcmove'),lk=$('tclook'),st=$('tcstick'),kn=$('tcknob');let mid=null,ox=0,oy=0,lid=null,lx=0,ly=0;const R0=()=>58*S.pc.size;
+   const a=TCA[id];if(hasAim)aim={x:e.clientX,y:e.clientY};
+   if(isTgl(id)){held=false;if(b._on){b._on=false;b.classList.remove('on','act');if(a&&a[1])a[1](b);}else{b._on=true;b.classList.add('on','act');if(a&&a[0])a[0](b);}return;}
+   held=true;b.classList.add('act');if(a&&a[0])a[0](b);});
+  /* sliding the same finger while a hold/toggle button is pressed also turns the camera */
+  b.addEventListener('pointermove',e=>{if(aim&&!tcEditing){lookBy(e.clientX-aim.x,e.clientY-aim.y);aim.x=e.clientX;aim.y=e.clientY;return;}if(!tcEditing||!drag)return;const l=S.pc.lay[id]=S.pc.lay[id]||{};l.x=clamp(e.clientX/innerWidth*100-drag.dx,2,98);l.y=clamp(e.clientY/innerHeight*100-drag.dy,3,97);tcLayout();});
+  const rel=()=>{aim=null;b.classList.remove('act');if(held){held=false;const a=TCA[id];if(a&&a[1])a[1](b);}};
+  b.addEventListener('pointerup',e=>{if(tcEditing){drag=null;save();return;}rel();});
+  b.addEventListener('pointercancel',e=>{drag=null;if(!tcEditing)rel();else b.classList.remove('act');});});
+ const mv=$('tcmove'),lk=$('tclook'),st=$('tcstick'),kn=$('tcknob');let mid=null,ox=0,oy=0;const R0=()=>58*S.pc.size;
  mv.addEventListener('pointerdown',e=>{if(tcEditing||mid!==null)return;e.preventDefault();mid=e.pointerId;try{mv.setPointerCapture(mid);}catch(_){}ox=e.clientX;oy=e.clientY;const r=R0();
   st.style.cssText='display:block;left:'+(ox-r)+'px;top:'+(oy-r)+'px;width:'+2*r+'px;height:'+2*r+'px';kn.style.cssText='width:'+r*.8+'px;height:'+r*.8+'px;transform:translate(-50%,-50%)';});
  mv.addEventListener('pointermove',e=>{if(e.pointerId!==mid)return;const r=R0();let dx=e.clientX-ox,dy=e.clientY-oy;const d=Math.hypot(dx,dy);if(d>r){dx*=r/d;dy*=r/d;}
   kn.style.transform='translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))';const L=Math.hypot(dx,dy),m=Math.min(1,L/r);if(m<.15){TC.fx=TC.fy=0;}else{const s=Math.min(1,(m-.15)/.7);TC.fx=dx/L*s;TC.fy=-dy/L*s;}});
  const mvUp=e=>{if(e.pointerId!==mid)return;mid=null;TC.fx=TC.fy=0;st.style.display='none';};mv.addEventListener('pointerup',mvUp);mv.addEventListener('pointercancel',mvUp);
- // Track touch pointers globally in capture phase: a finger can begin on FIRE/JUMP/etc.
- // and still drag to turn the camera without cancelling the button press.
- const lookPointers=new Map();
- document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||e.pointerType!=='touch')return;const btn=e.target&&e.target.closest?e.target.closest('.tcb'):null;if(e.target&&e.target.closest&&(e.target.closest('#dm')||e.target.closest('#tcbar')))return;if(btn&&btn.dataset.id==='weapon')return;if(e.clientX<innerWidth*.42&&!btn)return;lookPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});},{capture:true});
- document.addEventListener('pointermove',e=>{const prev=lookPointers.get(e.pointerId);if(!prev||tcEditing)return;const s=S.sens*0.0011*S.pc.sens*(zoomFov?zoomFov/S.fov:1);yaw-=(e.clientX-prev.x)*s;pitch=clamp(pitch-(e.clientY-prev.y)*s,-1.5,1.5);prev.x=e.clientX;prev.y=e.clientY;},{capture:true});
- const stopLook=e=>{lookPointers.delete(e.pointerId);};document.addEventListener('pointerup',stopLook,{capture:true});document.addEventListener('pointercancel',stopLook,{capture:true});
+ /* Camera look: one dedicated finger on the right part of the screen (never a button / HUD block).
+    A short, still tap on that area fires one shot (like a mouse click) when "Tap screen to fire" is on. */
+ const LK={id:null,x:0,y:0,x0:0,y0:0,t0:0,mv:0};
+ document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||!playing||e.pointerType!=='touch'||LK.id!==null)return;const tg=e.target;if(tg&&tg.closest&&(tg.closest('.tcb')||tg.closest('.hudp')||tg.closest('#tcbar')||tg.closest('#ingamechat')||tg.closest('#buy')))return;if(e.clientX<innerWidth*.42)return;LK.id=e.pointerId;LK.x=LK.x0=e.clientX;LK.y=LK.y0=e.clientY;LK.t0=performance.now();LK.mv=0;},{capture:true});
+ document.addEventListener('pointermove',e=>{if(e.pointerId!==LK.id||tcEditing)return;lookBy(e.clientX-LK.x,e.clientY-LK.y);LK.mv=Math.max(LK.mv,Math.hypot(e.clientX-LK.x0,e.clientY-LK.y0));LK.x=e.clientX;LK.y=e.clientY;},{capture:true});
+ const stopLook=e=>{if(e.pointerId!==LK.id)return;const tap=e.type==='pointerup'&&S.pc.tap!==false&&playing&&!tcEditing&&!buyOpen&&!igcOpen&&LK.mv<14&&performance.now()-LK.t0<300;LK.id=null;if(tap){semiLock=false;act('shoot',1);semiLock=false;}};
+ document.addEventListener('pointerup',stopLook,{capture:true});document.addEventListener('pointercancel',stopLook,{capture:true});
  $('tcdone').onclick=()=>tcEdit(false);$('tcrst').onclick=()=>{S.pc.lay={};save();tcLayout();};$('tcplus').onclick=()=>tcScale(1.1);$('tcmin').onclick=()=>tcScale(1/1.1);
+ $('tctog').onclick=()=>{if(!tcSel||!TGL.includes(tcSel)){flash('Chọn nút FIRE / JUMP / ALT / USE / DUCK trước',2000);return;}const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.t=!isTgl(tcSel);save();tcLayout();flash(tcSel.toUpperCase()+': '+(l.t?'TOGGLE (chạm bật / chạm tắt)':'HOLD (giữ mới có tác dụng)'),2200);};
  $('tchide').onclick=()=>{if(!tcSel)return;const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.on=l.on===false;save();tcLayout();};tcLayout();}
 /* ---- Settings UI (injected into Settings > Game) ---- */
 (function(){const g=document.querySelector('#t-set .sp[data-sp="game"]');if(!g){console.warn('[phone-ui] Settings > Game panel not found; phone controls remain available.');return;}g.insertAdjacentHTML('beforeend',`
@@ -1309,24 +1333,25 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
 <label><span>Look sensitivity</span><input type="range" id="pcsens" min="0.5" max="4" step="0.1"></label>
 <label><span>Button size</span><input type="range" id="pcsize" min="0.6" max="1.6" step="0.05"></label>
 <label><span>Button opacity</span><input type="range" id="pcop" min="0.2" max="1" step="0.05"></label>
-
 <label><input type="checkbox" id="pcfs"> Fullscreen + landscape lock on start</label>
-<p><button class="btn" id="pcedit">Edit button layout…</button> <button class="btn" id="pcreset">Reset layout</button></p>
+<label><input type="checkbox" id="pctap"> Tap the screen (not a button) to fire one shot</label>
+<p><button class="btn" id="pcedit">Edit button + HUD layout…</button> <button class="btn" id="pcreset">Reset layout</button></p>
 <h3 style="margin:12px 0 4px">Performance</h3>
 <label><span>Quality</span><select id="qual"><option value="auto">Auto (Low on phones)</option><option value="low">Low – best FPS</option><option value="med">Medium</option><option value="high">High</option></select></label>
 <label><span>Max FPS</span><select id="fpscap"><option value="0">Unlimited</option><option value="30">30</option><option value="45">45</option><option value="60">60</option></select></label>`);
  const apply=()=>{save();updPhone();tcLayout();resize();applyFog();};
- $('pcmode').value=S.pc.mode;$('pcsens').value=S.pc.sens;$('pcsize').value=S.pc.size;$('pcop').value=S.pc.op;$('pcfs').checked=!!S.pc.fs;$('qual').value=S.q;$('fpscap').value=String(S.cap);
- $('pcmode').onchange=e=>{S.pc.mode=e.target.value;apply();};$('pcsens').oninput=e=>{S.pc.sens=+e.target.value;save();};$('pcsize').oninput=e=>{S.pc.size=+e.target.value;apply();};$('pcop').oninput=e=>{S.pc.op=+e.target.value;apply();};$('pcfs').onchange=e=>{S.pc.fs=e.target.checked;save();};
+ $('pcmode').value=S.pc.mode;$('pcsens').value=S.pc.sens;$('pcsize').value=S.pc.size;$('pcop').value=S.pc.op;$('pcfs').checked=!!S.pc.fs;$('pctap').checked=S.pc.tap!==false;$('qual').value=S.q;$('fpscap').value=String(S.cap);
+ $('pcmode').onchange=e=>{S.pc.mode=e.target.value;apply();};$('pcsens').oninput=e=>{S.pc.sens=+e.target.value;save();};$('pcsize').oninput=e=>{S.pc.size=+e.target.value;apply();};$('pcop').oninput=e=>{S.pc.op=+e.target.value;apply();};$('pcfs').onchange=e=>{S.pc.fs=e.target.checked;save();};$('pctap').onchange=e=>{S.pc.tap=e.target.checked;save();};
  $('qual').onchange=e=>{S.q=e.target.value;apply();};$('fpscap').onchange=e=>{S.cap=+e.target.value;save();};
  $('pcedit').onclick=()=>{S.pc.mode==='pc'&&(S.pc.mode='phone',$('pcmode').value='phone',updPhone());tcEdit(true);};$('pcreset').onclick=()=>{S.pc.lay={};save();tcLayout();};})();
-const HUDI=[['amm',2,76],['kda',24,3],['team',40,2],['info',40,11]];
-const HUDS={amm:'<small>AK-47</small>\n<span class="big">30 / 90</span>\n<small>HE 1 FB 2 SG 1</small>',kda:'K 0  D 0',team:'T 0 – CT 0',info:'Round 1 · 1:55'};
+/* ---- Phone HUD (Standoff-style blocks, each draggable / resizable / hideable in the layout editor) ---- */
+const HUDI=[['hp',1.5,80],['amm',43,79],['kda',1.5,17],['team',40,1.5],['info',40,10]];
+const HUDS={hp:'<div class="hr"><b>HP</b> 100</div><div class="hbar"><i style="width:100%;background:#4fc34f"></i></div><div class="hr"><b>AR</b> 100</div><div class="hbar"><i style="width:100%;background:#3b8be0"></i></div><div class="hr g">$800</div>',amm:'<small>AK-47</small>\n<span class="big">30 / 90</span>\n<small>HE 1 FB 2 SG 1</small>',kda:'K 0  D 0',team:'T 0 – CT 0',info:'Round 1 · 1:55'};
 let hudVis=false,hudT=0;
 const hset=(k,h)=>{const e=$('hp_'+k);if(e&&e._k!==h){e._k=h;e.innerHTML=h;}};
-(function(){const st=document.createElement('style');st.textContent='.hudp{position:fixed;z-index:9055;color:var(--hud);font:700 12px/1.3 "Lucida Console",monospace;text-shadow:1px 1px 0 #000,0 0 4px #000;white-space:pre;pointer-events:none;display:none;padding:3px 7px;background:rgba(0,0,0,.3);border-radius:4px;touch-action:none;user-select:none;-webkit-user-select:none}.hudp:empty{display:none!important}.hudp small{font-size:10px;opacity:.85}.hudp .big{font-size:22px}.hudp.ed{pointer-events:auto;outline:2px dashed #ffb000aa;cursor:grab}.hudp.sel{outline:3px solid #ffb000}.hide-hud .hudp{display:none!important}body.phone #dm{display:none!important}';document.head.appendChild(st);})();
+(function(){const st=document.createElement('style');st.textContent='.hudp{position:fixed;z-index:9055;color:var(--hud);font:700 12px/1.3 "Lucida Console",monospace;text-shadow:1px 1px 0 #000,0 0 4px #000;white-space:pre;pointer-events:none;display:none;padding:3px 7px;background:rgba(0,0,0,.3);border-radius:4px;touch-action:none;user-select:none;-webkit-user-select:none}.hudp:empty{display:none!important}.hudp small{font-size:10px;opacity:.85}.hudp .big{font-size:22px}.hudp .hr{font-size:12px}.hudp .hbar{width:110px;height:7px;background:#0008;margin:2px 0 4px;border:1px solid #fff3}.hudp .hbar i{display:block;height:100%}.hudp .g{color:#6fd36f}.hudp.ed{pointer-events:auto;outline:2px dashed #ffb000aa;cursor:grab}.hudp.sel{outline:3px solid #ffb000}.hide-hud .hudp{display:none!important}';document.head.appendChild(st);})();
 function hudLayout(){HUDI.forEach(([k,dx,dy])=>{const e=$('hp_'+k);if(!e)return;const id='h_'+k,l=S.pc.lay[id]||{},on=l.on!==false;
- if(tcEditing&&!inMatch)hset(k,HUDS[k]);
+ if(tcEditing)hset(k,HUDS[k]);
  e.style.left=(l.x??dx)+'%';e.style.top=(l.y??dy)+'%';e.style.transformOrigin='0 0';e.style.transform='scale('+(l.s||1)+')';
  e.style.display=(PHONE&&(playing||tcEditing)&&(on||tcEditing))?'block':'none';e.style.opacity=on?1:.3;
  e.classList.toggle('ed',!!tcEditing);e.classList.toggle('sel',!!tcEditing&&tcSel===id);});}
@@ -1337,25 +1362,14 @@ HUDI.forEach(([k])=>{const e=document.createElement('div');e.id='hp_'+k;e.classN
 function hudPhone(){if(!PHONE||!playing)return;const n=performance.now();if(n-hudT<120)return;hudT=n;
  const id=S.load[cs],a=W[id]&&W[id].mag?ammoOf(id):null,tdm=S.gm.mode==='tdm';
  const gl=[['hegrenade','HE'],['flashbang','FB'],['smokegrenade','SG']].map(([g,t])=>id===g?'['+t+' '+GN[g]+']':t+' '+GN[g]).join(' ');
+ const hp=Math.max(0,Math.round(P.hp)),ar=Math.max(0,Math.round(P.ar));
+ hset('hp','<div class="hr"><b>HP</b> '+hp+'</div><div class="hbar"><i style="width:'+Math.min(100,hp)+'%;background:'+(hp>50?'#4fc34f':hp>25?'#e8b030':'#e03030')+'"></i></div><div class="hr"><b>AR</b> '+ar+'</div><div class="hbar"><i style="width:'+Math.min(100,ar)+'%;background:#3b8be0"></i></div><div class="hr g">'+(S.map==='train'?'$ ∞':'$'+P.money)+'</div>');
  hset('amm','<small>'+esc((WBY[id]?WBY[id].name:'')+(id in SIL&&SIL[id]?' [SIL]':'')+(BURST[id]?' [BURST]':''))+'</small>\n<span class="big">'+(a?a.m+' / '+a.r+(reloadT>0?' ⟳':''):'—')+'</span>\n<small>'+gl+'</small>');
  hset('kda','K '+P.fr+'  D '+P.de+(P.dead?'  · DEAD':''));
  hset('team',BM.on?'T '+BM.tw+' – CT '+BM.cw:tdm?'T '+TSC.T+' – CT '+TSC.CT+' · '+P.team:'Frags '+P.fr+' / '+FL);
  const inf=[];if(BM.on)inf.push(bombHud().trim());if(ONL)inf.push(netHud().trim());if(S.gm.time>0&&!ONL&&!BM.on)inf.push(fmtT(gmT));
- hset('info',esc(inf.join('\n')));}
+ hset('info',esc(inf.join('\n')));tcSlots();}
 updPhone();tcBuild();hudLayout();
-// The match information block is draggable on touch devices; it sits above the touch layer.
-(function enableDraggableMatchHud(){
- const el=$('dm');if(!el)return;let drag=null;
- const applySaved=()=>{const p=S.pc.dmPos;if(!p)return;const x=clamp(p.x*innerWidth,0,Math.max(0,innerWidth-el.offsetWidth)),y=clamp(p.y*innerHeight,0,Math.max(0,innerHeight-el.offsetHeight));el.style.left=x+'px';el.style.top=y+'px';el.style.right='auto';el.style.bottom='auto';el.style.transform='none';};
- applySaved();
- const syncEdit=()=>{el.classList.toggle('layout-editing',!!(PHONE&&playing&&tcEditing));};syncEdit();
- el.addEventListener('pointerdown',e=>{if(!PHONE||!playing)return;e.preventDefault();e.stopPropagation();const r=el.getBoundingClientRect();drag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};el.style.left=r.left+'px';el.style.top=r.top+'px';el.style.right='auto';el.style.bottom='auto';el.style.transform='none';el.style.cursor='grabbing';try{el.setPointerCapture(e.pointerId);}catch(_){} });
- el.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;e.preventDefault();const x=clamp(e.clientX-drag.dx,0,Math.max(0,innerWidth-el.offsetWidth)),y=clamp(e.clientY-drag.dy,0,Math.max(0,innerHeight-el.offsetHeight));el.style.left=x+'px';el.style.top=y+'px';});
- const finish=e=>{if(!drag||drag.id!==e.pointerId)return;const r=el.getBoundingClientRect();S.pc.dmPos={x:r.left/Math.max(1,innerWidth),y:r.top/Math.max(1,innerHeight)};drag=null;el.style.cursor='grab';save();};
- el.addEventListener('pointerup',finish);el.addEventListener('pointercancel',finish);
- const editWatch=setInterval(syncEdit,180);
- addEventListener('resize',applySaved);
-})();
 addEventListener('orientationchange',()=>setTimeout(()=>{queueGameResize();tcSync();tcLayout();},300));
 document.addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('touchmove',e=>{if(PHONE&&(playing||tcEditing)&&!(e.target&&e.target.closest&&e.target.closest('#menu,input,textarea,select,button')))e.preventDefault();},{passive:false});
