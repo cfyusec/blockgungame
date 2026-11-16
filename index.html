@@ -147,6 +147,7 @@ body.phone #ingamechat{top:auto!important;bottom:26%!important;left:8px!importan
 <div class="mpp" data-mp="create" hidden><label><span>Game mode</span><select id="mprmode"><option value="dm">Free For All</option><option value="tdm">Team Deathmatch</option><option value="bomb">Bomb Defusal</option><option value="knife">Knife Arena</option><option value="sniper">Sniper Only</option><option value="pistol">Pistol Only</option></select></label><label><span>Room name</span><input id="mprn" maxlength="20" value="My room"></label><label><span>Password</span><input id="mprp" type="password" maxlength="16" placeholder="optional"></label><p><button class="btn p" id="mpc">Create Room</button></p></div>
 <p id="mpst">Not connected.</p><p><button class="btn p" id="mps" hidden>Start Match (host)</button> <button class="btn" id="mpl" hidden>Leave Room</button></p></section>
 <section class="tab" id="t-weps"></section>
+<section class="tab" id="t-ctl"></section>
 <section class="tab" id="t-models"><h2>Model library</h2><p>Weapon models named like v_ak47.mdl are matched to their weapon automatically. Change any weapon's model in the buy menu.</p>
 <div><button class="btn" id="addm">Add .mdl files…</button><input type="file" id="mfiles" accept=".mdl" multiple hidden></div><div id="lib" style="margin-top:6px"></div></section>
 <section class="tab" id="t-set"><div class="stabs"><button data-s="game" class="on">Game</button><button data-s="cross">Crosshair</button><button data-s="models">Model pack</button></div>
@@ -551,7 +552,7 @@ async function addFiles(e,want){err('');let newMap=null,wadAdded=false;
 $('addm').onclick=()=>$('mfiles').click();$('addb').onclick=()=>$('bfiles').click();
 $('mfiles').onchange=e=>addFiles(e,'mdl');$('bfiles').onchange=e=>addFiles(e,'bsp');
 $('anames').onchange=e=>{S.animNames=e.target.checked;save();};$('showfps').onchange=e=>{S.showFps=e.target.checked;$('fps').style.display=S.showFps?'block':'none';save();};$('tpd').oninput=e=>{S.tpDist=+e.target.value;save();};
-function showTab(t){document.querySelectorAll('.tab').forEach(s=>s.style.display=s.id==='t-'+t?'block':'none');document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));if(t==='mp')mpList();if(t==='models')updatePlayerThumb();if(t==='weps')renderWeps();}
+function showTab(t){document.querySelectorAll('.tab').forEach(s=>s.style.display=s.id==='t-'+t?'block':'none');document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));if(t==='mp')mpList();if(t==='models')updatePlayerThumb();if(t==='weps')renderWeps();if(t==='ctl')syncCtl();}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
 /* buy menu */
 let buyOpen=false,bcat=null,bsel=null,wasPlaying=false;
@@ -614,7 +615,7 @@ function finishMatch(message){
  clearTimeout(matchEndTimer);matchEndTimer=setTimeout(()=>{leaveMatch();matchEnding=false;},2200);
 }
 function showHome(){const m=$('menu');document.body.classList.toggle('mainscr',!inMatch);m.classList.add('home');m.style.display='flex';const rl=$('roomlabel');if(rl){rl.textContent=ROOM?'ROOM: '+(RINFO.name||ROOM)+' · '+ROOM:'';rl.style.display=inMatch&&ROOM?'block':'none';}const L=$('mlist');L.innerHTML='';
- (inMatch?[['Resume',play],['Settings',()=>panel('set','Settings')],['Models',()=>panel('models','Models')],['Leave',leaveMatch]]:[['New Game',()=>panel('play','New Game')],['Models',()=>panel('models','Models')],['Multiplayer',()=>{panel('mp','Multiplayer');mpList();}],['Map files',()=>panel('maps','Map files')],['Settings',()=>panel('set','Settings')]])
+ (inMatch?[['Resume',play],['Controls',()=>panel('ctl','Controls')],['Settings',()=>panel('set','Settings')],['Models',()=>panel('models','Models')],['Leave',leaveMatch]]:[['New Game',()=>panel('play','New Game')],['Models',()=>panel('models','Models')],['Multiplayer',()=>{panel('mp','Multiplayer');mpList();}],['Map files',()=>panel('maps','Map files')],['Controls',()=>panel('ctl','Controls')],['Settings',()=>panel('set','Settings')]])
  .forEach(([n,f])=>{const d=document.createElement('div');d.className='mi';d.textContent=n;d.onclick=f;L.appendChild(d);});}
 function panel(t,n){document.body.classList.toggle('mainscr',!inMatch);$('menu').classList.remove('home');$('bname').textContent=n;if(t==='models'){showTab('weps');$('t-models').style.display='block';}else showTab(t);}
 function leaveMatch(){inMatch=false;netLeave(true);BM.on=false;clearBomb();third=false;P.dead=false;setZoom(0);clearNades();for(const b of bots)scene.remove(b.m);bots=[];showHome();}
@@ -1189,7 +1190,7 @@ let roomReconnecting=false;function reconnectRoom(){if(roomReconnecting||!ROOM||
 $('mpc').onclick=()=>mpCreate();$('mpq').onclick=mpQuick;$('mprfind').addEventListener('input',mpRenderRooms);const refreshRoomSearch=async()=>{const b=$('mpfindrooms');if(b.disabled)return;b.disabled=true;const label=b.textContent;b.textContent='Searching…';mpSt('Searching existing rooms only…');try{mpList();if(LOBBY){await new Promise(r=>setTimeout(r,700));const st=LOBBY.presenceState(),m={};for(const k in st)for(const e of st[k])if(e.code&&Number(e.n)>0)m[e.code]=e;LOB=Object.values(m);}mpRenderRooms();mpSt(LOB.length?'Found '+LOB.length+' existing room(s). Choose one to join.':'No existing rooms found. No room was created.');}catch(e){console.error('[room search]',e);mpSt('Could not search rooms. Try again.');}finally{b.disabled=false;b.textContent=label;}};$('mpfindrooms').onclick=refreshRoomSearch;$('mprreset').onclick=()=>{$('mprfind').value='';refreshRoomSearch();};setInterval(()=>{if(ROOM&&CH&&(CH.state==='closed'||CH.state==='errored'))reconnectRoom();},2500);$('mpg').onclick=()=>mpJoin();$('mps').onclick=sbStart;$('mpl').onclick=()=>{netLeave(true);mpSt('Left the room.');};
 /* ================= PHONE CONTROLS + PERFORMANCE ================= */
 S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,tap:true,lay:{}},S.pc);S.q=S.q||'auto';S.cap=+S.cap||0;
-const TC={fx:0,fy:0};let PHONE=false,tcShown=false,tcEditing=false,tcSel=null,vmAcc=0,lastDraw=0;
+const TC={fx:0,fy:0},JOY={id:null,ox:0,oy:0,q:false};let PHONE=false,tcShown=false,tcEditing=false,tcSel=null,vmAcc=0,lastDraw=0;
 /* ---- quality helpers (used by the small patches) ---- */
 const IS_TOUCH_DEV=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 // Keep focused fields inside the visible Safari area without scrollIntoView(),
@@ -1235,10 +1236,10 @@ const QCAP=()=>Q()==='low'?{spl:30,hole:30}:Q()==='med'?{spl:60,hole:50}:{spl:90
 const TRG=new THREE.BoxGeometry(.8,.8,1);
 function applyFog(){if(!world)return;const f=Q()==='low'?.6:Q()==='med'?.8:1;scene.fog=new THREE.Fog(SKY,world.fog[0]*f,world.fog[1]*f);cam.far=world.fog[1]*f+1500;cam.updateProjectionMatrix();}
 /* ---- touch UI (Standoff-style): id, label, x%, y%, size px, shape ('r' = weapon slot rectangle) ---- */
-const TCB=[['fire','FIRE',89,68,88],['fire2','FIRE',27,56,62],['jump','JUMP',73,85,58],['reload','R',69,63,48],['alt','ALT',96,44,46],['duck','DUCK',95,89,44],['use','USE',58,86,46],
+const TCB=[['fire','FIRE',89,68,88],['jump','JUMP',73,85,58],['reload','R',69,63,48],['alt','ALT',96,44,46],['duck','DUCK',95,89,44],['use','USE',58,86,46],
  ['w1','',57,12,0,'r'],['w2','',66,12,0,'r'],['w3','',75,12,0,'r'],['w4','',84,12,0,'r'],
  ['buy',"BUY",3,27,42],['drop','DROP',3,40,42],['insp','F',12,27,38],['menu','☰',3,8,38],['tab','TAB',11,8,36],['chat','CHAT',19,8,36]];
-const TCA={fire:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],fire2:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],
+const TCA={fire:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],
  jump:[()=>{K.Space=true;P.jb=.1;},()=>{K.Space=false;}],alt:[()=>{mh2=true;stab();},()=>{mh2=false;}],
  use:[()=>{K.KeyE=true;usePickup();},()=>{K.KeyE=false;}],reload:[()=>startReload()],buy:[()=>openBuy()],
  drop:[()=>{if(!bombThrow())dropGun();}],insp:[()=>act('inspect')],menu:[()=>pause()],chat:[()=>igcOpenChat('global')],
@@ -1249,12 +1250,13 @@ const TCA={fire:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],f
 #touch{position:fixed;inset:0;z-index:9000;display:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #tcrotate{display:none;position:fixed;inset:0;z-index:9999999;background:#080a07;color:#ffb000;align-items:center;justify-content:center;text-align:center;padding:24px;font:700 18px/1.5 system-ui,sans-serif;touch-action:none}
 @media (orientation:portrait){body.phone.playing-touch #tcrotate{display:flex}body.phone.playing-touch #touch{visibility:hidden}}
-#tcmove,#tclook{position:absolute;top:0;bottom:0;touch-action:none}#tcmove{left:0;width:42%}#tclook{left:42%;right:0}
+#tcmove,#tclook{position:absolute;top:0;bottom:0;touch-action:none}#tcmove{left:0;width:50%}#tclook{left:50%;right:0}
+#tcsplit{position:absolute;left:50%;top:0;bottom:0;width:0;border-left:2px dashed rgba(255,176,0,.55);display:none;pointer-events:none}#tcsplit i{position:absolute;top:46%;font:700 11px system-ui,sans-serif;font-style:normal;letter-spacing:1px;color:#ffb000cc;text-shadow:0 1px 2px #000;white-space:nowrap}
 .tcb{position:absolute;transform:translate(-50%,-50%);border-radius:50%;border:1.6px solid rgba(255,255,255,.66);background:linear-gradient(145deg,rgba(31,38,46,.72),rgba(7,12,18,.58));color:#f7f9fc;font:700 10px system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;box-shadow:0 2px 9px #0008,inset 0 1px 2px #ffffff24;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .tcb .tc-ico{width:48%;height:48%;display:block;flex:none;filter:drop-shadow(0 1px 1px #0009)}.tcb .tc-cap{font:700 8px/1 system-ui,sans-serif;letter-spacing:.55px;color:#e7edf5;text-shadow:0 1px 2px #000;opacity:.9}
 .tcb.act{background:linear-gradient(145deg,rgba(255,255,255,.42),rgba(115,139,161,.48));border-color:#fff;transform:translate(-50%,-50%) scale(.94)}.tcb.on{background:rgba(255,255,255,.35);border-color:#fff;color:#fff}.tcb.sel{outline:3px dashed #ffb000;outline-offset:3px}
 .tcb.tgl::after{content:'T';position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:#ffb000;color:#000;font:700 9px/14px system-ui,sans-serif;text-align:center}
-.tcb[data-id="fire"],.tcb[data-id="fire2"]{border-color:rgba(255,255,255,.92);background:linear-gradient(145deg,rgba(170,49,42,.8),rgba(75,17,20,.78));box-shadow:0 2px 12px #0009,inset 0 1px 3px #ffffff35}.tcb[data-id="fire"] .tc-ico,.tcb[data-id="fire2"] .tc-ico{width:53%;height:53%}
+.tcb[data-id="fire"]{border-color:rgba(255,255,255,.92);background:linear-gradient(145deg,rgba(170,49,42,.8),rgba(75,17,20,.78));box-shadow:0 2px 12px #0009,inset 0 1px 3px #ffffff35}.tcb[data-id="fire"] .tc-ico{width:53%;height:53%}
 .tcb[data-id="jump"],.tcb[data-id="duck"],.tcb[data-id="reload"],.tcb[data-id="alt"]{background:linear-gradient(145deg,rgba(48,57,67,.78),rgba(10,16,23,.7))}
 /* Weapon slot bar (tap to equip, like Standoff 2) */
 .tcb.slot{border-radius:7px;flex-direction:row;gap:5px;white-space:nowrap;font-weight:700;letter-spacing:.2px}
@@ -1271,7 +1273,7 @@ body.phone .btn{padding:10px 16px}body.phone .mi{font-size:26px;padding:6px 8px 
 body.phone #hud{display:none}body.phone #lockhint{display:none!important}`;document.head.appendChild(st);})();
 /* ---- helpers ---- */
 function updPhone(){PHONE=S.pc.mode==='phone'||(S.pc.mode==='auto'&&IS_TOUCH_DEV);document.body.classList.toggle('phone',PHONE);return PHONE;}
-const TGL=['fire','fire2','jump','alt','use','duck'];
+const TGL=['fire','jump','alt','use','duck'];
 const isTgl=id=>{const l=S.pc.lay[id];return TGL.includes(id)&&(l&&l.t!==undefined?!!l.t:id==='duck');};
 function tcPos(id){const d=TCB.find(a=>a[0]===id),l=S.pc.lay[id]||{};return{x:l.x??d[2],y:l.y??d[3],s:l.s||1,on:l.on!==false};}
 const WSHORT={ak47:'AK-47',m4a1:'M4A1',usp:'USP',glock18:'GLOCK',deagle:'DEAGLE',awp:'AWP',scout:'SCOUT',galil:'GALIL',famas:'FAMAS',mp5navy:'MP5',p90:'P90',p228:'P228',fiveseven:'57',elite:'ELITE',tmp:'TMP',mac10:'MAC10',ump45:'UMP45',m249:'M249',knife:'KNIFE'};
@@ -1284,14 +1286,14 @@ function tcLayout(){hudLayout();const t=$('touch');if(!t)return;t.querySelectorA
  b.style.left=p.x+'%';b.style.top=p.y+'%';b.style.width=w+'px';b.style.height=h+'px';b.style.fontSize=(rect?Math.max(9,11*k):Math.max(10,w*.26))+'px';
  b.style.opacity=p.on?S.pc.op:(tcEditing?.2:0);b.style.display=(p.on||tcEditing)?'flex':'none';b.classList.toggle('sel',tcEditing&&tcSel===id);b.classList.toggle('tgl',isTgl(id));});tcSlots();}
 function tcScale(f){if(!tcSel)return;const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.s=clamp((l.s||1)*f,.5,2.2);save();tcLayout();}
-function tcEdit(on){tcEditing=on;$('tcbar').style.display=on?'flex':'none';tcSel=null;if(on)$('menu').style.display='none';else{$('menu').style.display='flex';panel('set','Settings');}tcLayout();tcSync();}
+function tcEdit(on){tcEditing=on;$('tcbar').style.display=on?'flex':'none';{const sp=$('tcsplit');if(sp)sp.style.display=on?'block':'none';}tcSel=null;if(on)$('menu').style.display='none';else{$('menu').style.display='flex';panel('ctl','Controls');}tcLayout();tcSync();}
 function tcSync(){const hv=!!(PHONE&&(playing||tcEditing));if(hv!==hudVis){hudVis=hv;hudLayout();}document.body.classList.toggle('playing-touch',!!(PHONE&&playing));const want=tcEditing||(PHONE&&playing&&!buyOpen&&!matchEnding);if(want!==tcShown){tcShown=want;$('touch').style.display=want?'block':'none';
- if(!want){TC.fx=TC.fy=0;K.KeyC=K.Space=K.KeyE=false;mh=mh2=false;document.querySelectorAll('.tcb').forEach(b=>{b._on=false;b.classList.remove('on','act');});}}}
+ if(!want){TC.fx=TC.fy=0;K.KeyC=K.Space=K.KeyE=false;mh=mh2=false;document.querySelectorAll('.tcb').forEach(b=>{b._on=false;b.classList.remove('on','act');});JOY.id=null;{const sk=$('tcstick');if(sk)sk.style.display='none';}}}}
 function tcEnter(){if(!S.pc.fs)return;const e=document.documentElement;const lock=()=>{try{const o=screen.orientation;if(o&&o.lock){const p=o.lock('landscape');if(p&&p.catch)p.catch(()=>{});}}catch(_){}};try{if(!document.fullscreenElement&&e.requestFullscreen){const r=e.requestFullscreen({navigationUI:'hide'});if(r&&r.then)r.then(lock).catch(()=>{});else lock();}else{if(e.webkitRequestFullscreen)e.webkitRequestFullscreen();lock();}}catch(_){lock();}}
 function lookBy(dx,dy){const s=S.sens*0.0011*S.pc.sens*(zoomFov?zoomFov/S.fov:1);yaw-=dx*s;pitch=clamp(pitch-dy*s,-1.5,1.5);}
 function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot.textContent='↻  Rotate your device to landscape to play';document.body.appendChild(rot);
- const t=document.createElement('div');t.id='touch';t.innerHTML='<div id="tcmove"></div><div id="tclook"></div><div id="tcstick"><div id="tcknob"></div></div>';document.body.appendChild(t);
- const tcGlyph={fire:'<path d="M5 12h8l-2-2m2 2-2 2M14 5l5 7-5 7"/>',fire2:'<path d="M5 12h8l-2-2m2 2-2 2M14 5l5 7-5 7"/>',jump:'<path d="M12 19V5m-5 6 5-6 5 6"/>',duck:'<path d="M5 16h14M7 16l2-5h6l2 5M10 8h4"/>',reload:'<path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5M4 13a8 8 0 0 0 14 5l2-2m0 5v-5h-5"/>',alt:'<path d="M4 12h16M12 4v16M7 7l10 10m0-10L7 17"/>',use:'<path d="M7 12h10M12 7v10M5 5l14 14"/>',buy:'<path d="M4 7h16l-1 13H5L4 7Zm4 0a4 4 0 0 1 8 0"/>',drop:'<path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/>',insp:'<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',tab:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 13h6"/>',chat:'<path d="M4 5h16v12H9l-5 3V5Z"/>'};
+ const t=document.createElement('div');t.id='touch';t.innerHTML='<div id="tcmove"></div><div id="tclook"></div><div id="tcstick"><div id="tcknob"></div></div><div id="tcsplit"><i style="right:8px">◀ MOVE</i><i style="left:8px">LOOK ▶</i></div>';document.body.appendChild(t);
+ const tcGlyph={fire:'<path d="M5 12h8l-2-2m2 2-2 2M14 5l5 7-5 7"/>',jump:'<path d="M12 19V5m-5 6 5-6 5 6"/>',duck:'<path d="M5 16h14M7 16l2-5h6l2 5M10 8h4"/>',reload:'<path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5M4 13a8 8 0 0 0 14 5l2-2m0 5v-5h-5"/>',alt:'<path d="M4 12h16M12 4v16M7 7l10 10m0-10L7 17"/>',use:'<path d="M7 12h10M12 7v10M5 5l14 14"/>',buy:'<path d="M4 7h16l-1 13H5L4 7Zm4 0a4 4 0 0 1 8 0"/>',drop:'<path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/>',insp:'<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',tab:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 13h6"/>',chat:'<path d="M4 5h16v12H9l-5 3V5Z"/>'};
  for(const a of TCB){const b=document.createElement('div');b.className='tcb'+(a[5]==='r'?' slot':'');b.dataset.id=a[0];b.title=a[1];if(a[5]!=='r'){b.innerHTML='<svg class="tc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(tcGlyph[a[0]]||'')+'</svg><span class="tc-cap">'+a[1]+'</span>';}t.appendChild(b);}
  const bar=document.createElement('div');bar.id='tcbar';bar.innerHTML='<button class="btn p" id="tcdone">Done</button><button class="btn" id="tcmin">−</button><button class="btn" id="tcplus">+</button><button class="btn" id="tchide">Hide/Show</button><button class="btn" id="tctog">Toggle/Hold</button><button class="btn" id="tcrst">Reset</button><span class="tc-grip" id="tcgrip">⠿ HOLD HERE TO MOVE PANEL · Drag buttons / HUD blocks · − / + resize</span>';document.body.appendChild(bar);
  // The layout editor panel itself can be moved so it never has to cover weapon slots.
@@ -1299,51 +1301,62 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
  grip.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const r=bar.getBoundingClientRect();barDrag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};try{grip.setPointerCapture(e.pointerId);}catch(_){}bar.style.transform='none';});
  grip.addEventListener('pointermove',e=>{if(!barDrag||barDrag.id!==e.pointerId)return;const x=clamp(e.clientX-barDrag.dx,0,innerWidth-bar.offsetWidth),y=clamp(e.clientY-barDrag.dy,0,innerHeight-bar.offsetHeight);bar.style.left=x+'px';bar.style.top=y+'px';});
  const barUp=e=>{if(barDrag&&barDrag.id===e.pointerId){barDrag=null;}};grip.addEventListener('pointerup',barUp);grip.addEventListener('pointercancel',barUp);
- t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id;let drag=null,aim=null,held=false;const hasAim=TGL.includes(id);
+ const st=$('tcstick'),kn=$('tcknob'),mv=$('tcmove');const R0=()=>58*S.pc.size;
+ /* Screen split: LEFT half = MOVE, RIGHT half = LOOK. A finger that starts on a button follows the half the button sits in:
+    right-half buttons -> sliding turns the camera; left-half buttons -> sliding drives the stick (a plain press never moves). */
+ const joyStart=(e,quiet)=>{if(JOY.id!==null)return false;JOY.id=e.pointerId;JOY.ox=e.clientX;JOY.oy=e.clientY;JOY.q=!!quiet;const r=R0();
+  st.style.cssText='display:'+(quiet?'none':'block')+';left:'+(JOY.ox-r)+'px;top:'+(JOY.oy-r)+'px;width:'+2*r+'px;height:'+2*r+'px';kn.style.cssText='width:'+r*.8+'px;height:'+r*.8+'px;transform:translate(-50%,-50%)';return true;};
+ const joyMove=e=>{if(e.pointerId!==JOY.id)return;const r=R0();let dx=e.clientX-JOY.ox,dy=e.clientY-JOY.oy;const d=Math.hypot(dx,dy);if(JOY.q&&d>10){JOY.q=false;st.style.display='block';}if(d>r){dx*=r/d;dy*=r/d;}
+  kn.style.transform='translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))';const L=Math.hypot(dx,dy),m=Math.min(1,L/r);if(m<.15){TC.fx=TC.fy=0;}else{const s=Math.min(1,(m-.15)/.7);TC.fx=dx/L*s;TC.fy=-dy/L*s;}};
+ const joyEnd=e=>{if(e.pointerId!==JOY.id)return;JOY.id=null;TC.fx=TC.fy=0;st.style.display='none';};
+ t.querySelectorAll('.tcb').forEach(b=>{const id=b.dataset.id;let drag=null,aim=null,joy=false,held=false;
   b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();try{b.setPointerCapture(e.pointerId);}catch(_){}
    if(tcEditing){tcSel=id;const p=tcPos(id);drag={dx:e.clientX/innerWidth*100-p.x,dy:e.clientY/innerHeight*100-p.y};tcLayout();return;}
-   const a=TCA[id];if(hasAim)aim={x:e.clientX,y:e.clientY};
+   const a=TCA[id];aim=null;joy=false;
+   if(tcPos(id).x>=50)aim={x:e.clientX,y:e.clientY};else joy=joyStart(e,true);
    if(isTgl(id)){held=false;if(b._on){b._on=false;b.classList.remove('on','act');if(a&&a[1])a[1](b);}else{b._on=true;b.classList.add('on','act');if(a&&a[0])a[0](b);}return;}
    held=true;b.classList.add('act');if(a&&a[0])a[0](b);});
-  /* sliding the same finger while a hold/toggle button is pressed also turns the camera */
-  b.addEventListener('pointermove',e=>{if(aim&&!tcEditing){lookBy(e.clientX-aim.x,e.clientY-aim.y);aim.x=e.clientX;aim.y=e.clientY;return;}if(!tcEditing||!drag)return;const l=S.pc.lay[id]=S.pc.lay[id]||{};l.x=clamp(e.clientX/innerWidth*100-drag.dx,2,98);l.y=clamp(e.clientY/innerHeight*100-drag.dy,3,97);tcLayout();});
-  const rel=()=>{aim=null;b.classList.remove('act');if(held){held=false;const a=TCA[id];if(a&&a[1])a[1](b);}};
-  b.addEventListener('pointerup',e=>{if(tcEditing){drag=null;save();return;}rel();});
-  b.addEventListener('pointercancel',e=>{drag=null;if(!tcEditing)rel();else b.classList.remove('act');});});
- const mv=$('tcmove'),lk=$('tclook'),st=$('tcstick'),kn=$('tcknob');let mid=null,ox=0,oy=0;const R0=()=>58*S.pc.size;
- mv.addEventListener('pointerdown',e=>{if(tcEditing||mid!==null)return;e.preventDefault();mid=e.pointerId;try{mv.setPointerCapture(mid);}catch(_){}ox=e.clientX;oy=e.clientY;const r=R0();
-  st.style.cssText='display:block;left:'+(ox-r)+'px;top:'+(oy-r)+'px;width:'+2*r+'px;height:'+2*r+'px';kn.style.cssText='width:'+r*.8+'px;height:'+r*.8+'px;transform:translate(-50%,-50%)';});
- mv.addEventListener('pointermove',e=>{if(e.pointerId!==mid)return;const r=R0();let dx=e.clientX-ox,dy=e.clientY-oy;const d=Math.hypot(dx,dy);if(d>r){dx*=r/d;dy*=r/d;}
-  kn.style.transform='translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))';const L=Math.hypot(dx,dy),m=Math.min(1,L/r);if(m<.15){TC.fx=TC.fy=0;}else{const s=Math.min(1,(m-.15)/.7);TC.fx=dx/L*s;TC.fy=-dy/L*s;}});
- const mvUp=e=>{if(e.pointerId!==mid)return;mid=null;TC.fx=TC.fy=0;st.style.display='none';};mv.addEventListener('pointerup',mvUp);mv.addEventListener('pointercancel',mvUp);
+  b.addEventListener('pointermove',e=>{if(!tcEditing){if(aim){lookBy(e.clientX-aim.x,e.clientY-aim.y);aim.x=e.clientX;aim.y=e.clientY;}else if(joy)joyMove(e);return;}if(!drag)return;const l=S.pc.lay[id]=S.pc.lay[id]||{};l.x=clamp(e.clientX/innerWidth*100-drag.dx,2,98);l.y=clamp(e.clientY/innerHeight*100-drag.dy,3,97);tcLayout();});
+  const rel=e=>{if(joy){joy=false;joyEnd(e);}aim=null;b.classList.remove('act');if(held){held=false;const a=TCA[id];if(a&&a[1])a[1](b);}};
+  b.addEventListener('pointerup',e=>{if(tcEditing){drag=null;save();return;}rel(e);});
+  b.addEventListener('pointercancel',e=>{drag=null;if(!tcEditing)rel(e);else b.classList.remove('act');});});
+ mv.addEventListener('pointerdown',e=>{if(tcEditing)return;e.preventDefault();try{mv.setPointerCapture(e.pointerId);}catch(_){}joyStart(e,false);});
+ mv.addEventListener('pointermove',joyMove);
+ mv.addEventListener('pointerup',joyEnd);mv.addEventListener('pointercancel',joyEnd);
  /* Camera look: one dedicated finger on the right part of the screen (never a button / HUD block).
     A short, still tap on that area fires one shot (like a mouse click) when "Tap screen to fire" is on. */
  const LK={id:null,x:0,y:0,x0:0,y0:0,t0:0,mv:0};
- document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||!playing||e.pointerType!=='touch'||LK.id!==null)return;const tg=e.target;if(tg&&tg.closest&&(tg.closest('.tcb')||tg.closest('.hudp')||tg.closest('#tcbar')||tg.closest('#ingamechat')||tg.closest('#buy')))return;if(e.clientX<innerWidth*.42)return;LK.id=e.pointerId;LK.x=LK.x0=e.clientX;LK.y=LK.y0=e.clientY;LK.t0=performance.now();LK.mv=0;},{capture:true});
+ document.addEventListener('pointerdown',e=>{if(tcEditing||!PHONE||!playing||e.pointerType!=='touch'||LK.id!==null)return;const tg=e.target;if(tg&&tg.closest&&(tg.closest('.tcb')||tg.closest('.hudp')||tg.closest('#tcbar')||tg.closest('#ingamechat')||tg.closest('#buy')))return;if(e.clientX<innerWidth*.5)return;LK.id=e.pointerId;LK.x=LK.x0=e.clientX;LK.y=LK.y0=e.clientY;LK.t0=performance.now();LK.mv=0;},{capture:true});
  document.addEventListener('pointermove',e=>{if(e.pointerId!==LK.id||tcEditing)return;lookBy(e.clientX-LK.x,e.clientY-LK.y);LK.mv=Math.max(LK.mv,Math.hypot(e.clientX-LK.x0,e.clientY-LK.y0));LK.x=e.clientX;LK.y=e.clientY;},{capture:true});
  const stopLook=e=>{if(e.pointerId!==LK.id)return;const tap=e.type==='pointerup'&&S.pc.tap!==false&&playing&&!tcEditing&&!buyOpen&&!igcOpen&&LK.mv<14&&performance.now()-LK.t0<300;LK.id=null;if(tap){semiLock=false;act('shoot',1);semiLock=false;}};
  document.addEventListener('pointerup',stopLook,{capture:true});document.addEventListener('pointercancel',stopLook,{capture:true});
  $('tcdone').onclick=()=>tcEdit(false);$('tcrst').onclick=()=>{S.pc.lay={};save();tcLayout();};$('tcplus').onclick=()=>tcScale(1.1);$('tcmin').onclick=()=>tcScale(1/1.1);
- $('tctog').onclick=()=>{if(!tcSel||!TGL.includes(tcSel)){flash('Chọn nút FIRE / JUMP / ALT / USE / DUCK trước',2000);return;}const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.t=!isTgl(tcSel);save();tcLayout();flash(tcSel.toUpperCase()+': '+(l.t?'TOGGLE (chạm bật / chạm tắt)':'HOLD (giữ mới có tác dụng)'),2200);};
+ $('tctog').onclick=()=>{if(!tcSel||!TGL.includes(tcSel)){flash('Chọn nút FIRE / JUMP / ALT / USE / DUCK trước',2000);return;}const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.t=!isTgl(tcSel);save();tcLayout();syncCtl();flash(tcSel.toUpperCase()+': '+(l.t?'TOGGLE (chạm bật / chạm tắt)':'HOLD (giữ mới có tác dụng)'),2200);};
  $('tchide').onclick=()=>{if(!tcSel)return;const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.on=l.on===false;save();tcLayout();};tcLayout();}
-/* ---- Settings UI (injected into Settings > Game) ---- */
-(function(){const g=document.querySelector('#t-set .sp[data-sp="game"]');if(!g){console.warn('[phone-ui] Settings > Game panel not found; phone controls remain available.');return;}g.insertAdjacentHTML('beforeend',`
-<h3 style="margin:12px 0 4px">Phone / touch controls</h3>
+/* ---- Controls panel (main menu -> Controls) + Performance (Settings > Game) ---- */
+const pcApply=()=>{save();updPhone();tcLayout();resize();applyFog();};
+function syncCtl(){['fire','jump','alt','use','duck'].forEach(id=>{const e=$('tg_'+id);if(e)e.value=isTgl(id)?'toggle':'hold';});}
+(function(){const c=$('t-ctl');if(!c)return;
+ const rows=[['fire','FIRE'],['jump','JUMP'],['alt','ALT / scope'],['use','USE'],['duck','DUCK']].map(([id,n])=>'<label><span>'+n+'</span><select id="tg_'+id+'"><option value="hold">Hold (press = on, release = off)</option><option value="toggle">Toggle (tap on / tap off)</option></select></label>').join('');
+ c.innerHTML=`<h2>Phone / touch controls</h2>
+<p>The screen is split: <b>left half = move</b>, <b>right half = look</b>. A finger that starts on a button follows the half the button sits in (right half: slide to look · left half: slide to move; a plain press never moves).</p>
 <label><span>Control mode</span><select id="pcmode"><option value="auto">Auto-detect</option><option value="phone">Phone (touch)</option><option value="pc">PC (keyboard + mouse)</option></select></label>
 <label><span>Look sensitivity</span><input type="range" id="pcsens" min="0.5" max="4" step="0.1"></label>
 <label><span>Button size</span><input type="range" id="pcsize" min="0.6" max="1.6" step="0.05"></label>
 <label><span>Button opacity</span><input type="range" id="pcop" min="0.2" max="1" step="0.05"></label>
 <label><input type="checkbox" id="pcfs"> Fullscreen + landscape lock on start</label>
-<label><input type="checkbox" id="pctap"> Tap the screen (not a button) to fire one shot</label>
-<p><button class="btn" id="pcedit">Edit button + HUD layout…</button> <button class="btn" id="pcreset">Reset layout</button></p>
+<label><input type="checkbox" id="pctap"> Tap the right half (not a button) to fire one shot</label>
+<h2>Button behaviour</h2>${rows}
+<p><button class="btn" id="pcedit">Edit button + HUD layout…</button> <button class="btn" id="pcreset">Reset layout</button></p>`;
+ $('pcmode').value=S.pc.mode;$('pcsens').value=S.pc.sens;$('pcsize').value=S.pc.size;$('pcop').value=S.pc.op;$('pcfs').checked=!!S.pc.fs;$('pctap').checked=S.pc.tap!==false;syncCtl();
+ $('pcmode').onchange=e=>{S.pc.mode=e.target.value;pcApply();};$('pcsens').oninput=e=>{S.pc.sens=+e.target.value;save();};$('pcsize').oninput=e=>{S.pc.size=+e.target.value;pcApply();};$('pcop').oninput=e=>{S.pc.op=+e.target.value;pcApply();};$('pcfs').onchange=e=>{S.pc.fs=e.target.checked;save();};$('pctap').onchange=e=>{S.pc.tap=e.target.checked;save();};
+ ['fire','jump','alt','use','duck'].forEach(id=>{$('tg_'+id).onchange=e=>{const l=S.pc.lay[id]=S.pc.lay[id]||{};l.t=e.target.value==='toggle';save();tcLayout();};});
+ $('pcedit').onclick=()=>{S.pc.mode==='pc'&&(S.pc.mode='phone',$('pcmode').value='phone',updPhone());tcEdit(true);};$('pcreset').onclick=()=>{S.pc.lay={};save();tcLayout();syncCtl();};})();
+(function(){const g=document.querySelector('#t-set .sp[data-sp="game"]');if(!g)return;g.insertAdjacentHTML('beforeend',`
 <h3 style="margin:12px 0 4px">Performance</h3>
 <label><span>Quality</span><select id="qual"><option value="auto">Auto (Low on phones)</option><option value="low">Low – best FPS</option><option value="med">Medium</option><option value="high">High</option></select></label>
 <label><span>Max FPS</span><select id="fpscap"><option value="0">Unlimited</option><option value="30">30</option><option value="45">45</option><option value="60">60</option></select></label>`);
- const apply=()=>{save();updPhone();tcLayout();resize();applyFog();};
- $('pcmode').value=S.pc.mode;$('pcsens').value=S.pc.sens;$('pcsize').value=S.pc.size;$('pcop').value=S.pc.op;$('pcfs').checked=!!S.pc.fs;$('pctap').checked=S.pc.tap!==false;$('qual').value=S.q;$('fpscap').value=String(S.cap);
- $('pcmode').onchange=e=>{S.pc.mode=e.target.value;apply();};$('pcsens').oninput=e=>{S.pc.sens=+e.target.value;save();};$('pcsize').oninput=e=>{S.pc.size=+e.target.value;apply();};$('pcop').oninput=e=>{S.pc.op=+e.target.value;apply();};$('pcfs').onchange=e=>{S.pc.fs=e.target.checked;save();};$('pctap').onchange=e=>{S.pc.tap=e.target.checked;save();};
- $('qual').onchange=e=>{S.q=e.target.value;apply();};$('fpscap').onchange=e=>{S.cap=+e.target.value;save();};
- $('pcedit').onclick=()=>{S.pc.mode==='pc'&&(S.pc.mode='phone',$('pcmode').value='phone',updPhone());tcEdit(true);};$('pcreset').onclick=()=>{S.pc.lay={};save();tcLayout();};})();
+ $('qual').value=S.q;$('fpscap').value=String(S.cap);$('qual').onchange=e=>{S.q=e.target.value;pcApply();};$('fpscap').onchange=e=>{S.cap=+e.target.value;save();};})();
 /* ---- Phone HUD (Standoff-style blocks, each draggable / resizable / hideable in the layout editor) ---- */
 const HUDI=[['hp',1.5,80],['amm',43,79],['kda',1.5,17],['team',40,1.5],['info',40,10]];
 const HUDS={hp:'<div class="hr"><b>HP</b> 100</div><div class="hbar"><i style="width:100%;background:#4fc34f"></i></div><div class="hr"><b>AR</b> 100</div><div class="hbar"><i style="width:100%;background:#3b8be0"></i></div><div class="hr g">$800</div>',amm:'<small>AK-47</small>\n<span class="big">30 / 90</span>\n<small>HE 1 FB 2 SG 1</small>',kda:'K 0  D 0',team:'T 0 – CT 0',info:'Round 1 · 1:55'};
