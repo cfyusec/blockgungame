@@ -1250,7 +1250,7 @@ const TCA={fire:[()=>{mh=true;act('shoot',1);},()=>{mh=false;semiLock=false;}],
 #touch{position:fixed;inset:0;z-index:9000;display:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #tcrotate{display:none;position:fixed;inset:0;z-index:9999999;background:#080a07;color:#ffb000;align-items:center;justify-content:center;text-align:center;padding:24px;font:700 18px/1.5 system-ui,sans-serif;touch-action:none}
 @media (orientation:portrait){body.phone.playing-touch #tcrotate{display:flex}body.phone.playing-touch #touch{visibility:hidden}}
-#tcmove,#tclook{position:absolute;top:0;bottom:0;touch-action:none}#tcmove{left:0;width:50%}#tclook{left:50%;right:0}
+#tcmove,#tclook{position:absolute;touch-action:none}#tcmove{left:0;top:50%;bottom:0;width:50%;border-top:1px dashed rgba(255,176,0,.28);box-sizing:border-box}#tclook{left:50%;top:0;right:0;bottom:0}
 #tcsplit{position:absolute;left:50%;top:0;bottom:0;width:0;border-left:2px dashed rgba(255,176,0,.55);display:none;pointer-events:none}#tcsplit i{position:absolute;top:46%;font:700 11px system-ui,sans-serif;font-style:normal;letter-spacing:1px;color:#ffb000cc;text-shadow:0 1px 2px #000;white-space:nowrap}
 .tcb{position:absolute;transform:translate(-50%,-50%);border-radius:50%;border:1.6px solid rgba(255,255,255,.66);background:linear-gradient(145deg,rgba(31,38,46,.72),rgba(7,12,18,.58));color:#f7f9fc;font:700 10px system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;box-shadow:0 2px 9px #0008,inset 0 1px 2px #ffffff24;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .tcb .tc-ico{width:48%;height:48%;display:block;flex:none;filter:drop-shadow(0 1px 1px #0009)}.tcb .tc-cap{font:700 8px/1 system-ui,sans-serif;letter-spacing:.55px;color:#e7edf5;text-shadow:0 1px 2px #000;opacity:.9}
@@ -1302,8 +1302,8 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
  grip.addEventListener('pointermove',e=>{if(!barDrag||barDrag.id!==e.pointerId)return;const x=clamp(e.clientX-barDrag.dx,0,innerWidth-bar.offsetWidth),y=clamp(e.clientY-barDrag.dy,0,innerHeight-bar.offsetHeight);bar.style.left=x+'px';bar.style.top=y+'px';});
  const barUp=e=>{if(barDrag&&barDrag.id===e.pointerId){barDrag=null;}};grip.addEventListener('pointerup',barUp);grip.addEventListener('pointercancel',barUp);
  const st=$('tcstick'),kn=$('tcknob'),mv=$('tcmove');const R0=()=>58*S.pc.size;
- /* Screen split: LEFT half = MOVE, RIGHT half = LOOK. A finger that starts on a button follows the half the button sits in:
-    right-half buttons -> sliding turns the camera; left-half buttons -> sliding drives the stick (a plain press never moves). */
+ /* Touch zones: LOWER-LEFT quarter = MOVE, RIGHT half = LOOK; UPPER-LEFT half is inert for movement.
+    A finger starting on a button follows its zone: right-half buttons slide-look; lower-left buttons slide-move. */
  const joyStart=(e,quiet)=>{if(JOY.id!==null)return false;JOY.id=e.pointerId;JOY.ox=e.clientX;JOY.oy=e.clientY;JOY.q=!!quiet;const r=R0();
   st.style.cssText='display:'+(quiet?'none':'block')+';left:'+(JOY.ox-r)+'px;top:'+(JOY.oy-r)+'px;width:'+2*r+'px;height:'+2*r+'px';kn.style.cssText='width:'+r*.8+'px;height:'+r*.8+'px;transform:translate(-50%,-50%)';return true;};
  const joyMove=e=>{if(e.pointerId!==JOY.id)return;const r=R0();let dx=e.clientX-JOY.ox,dy=e.clientY-JOY.oy;const d=Math.hypot(dx,dy);if(JOY.q&&d>10){JOY.q=false;st.style.display='block';}if(d>r){dx*=r/d;dy*=r/d;}
@@ -1313,7 +1313,7 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
   b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();try{b.setPointerCapture(e.pointerId);}catch(_){}
    if(tcEditing){tcSel=id;const p=tcPos(id);drag={dx:e.clientX/innerWidth*100-p.x,dy:e.clientY/innerHeight*100-p.y};tcLayout();return;}
    const a=TCA[id];aim=null;joy=false;
-   if(tcPos(id).x>=50)aim={x:e.clientX,y:e.clientY};else joy=joyStart(e,true);
+   if(tcPos(id).x>=50)aim={x:e.clientX,y:e.clientY};else if(e.clientY>=innerHeight*.5)joy=joyStart(e,true);
    if(isTgl(id)){held=false;if(b._on){b._on=false;b.classList.remove('on','act');if(a&&a[1])a[1](b);}else{b._on=true;b.classList.add('on','act');if(a&&a[0])a[0](b);}return;}
    held=true;b.classList.add('act');if(a&&a[0])a[0](b);});
   b.addEventListener('pointermove',e=>{if(!tcEditing){if(aim){lookBy(e.clientX-aim.x,e.clientY-aim.y);aim.x=e.clientX;aim.y=e.clientY;}else if(joy)joyMove(e);return;}if(!drag)return;const l=S.pc.lay[id]=S.pc.lay[id]||{};l.x=clamp(e.clientX/innerWidth*100-drag.dx,2,98);l.y=clamp(e.clientY/innerHeight*100-drag.dy,3,97);tcLayout();});
@@ -1339,7 +1339,7 @@ function syncCtl(){['fire','jump','alt','use','duck'].forEach(id=>{const e=$('tg
 (function(){const c=$('t-ctl');if(!c)return;
  const rows=[['fire','FIRE'],['jump','JUMP'],['alt','ALT / scope'],['use','USE'],['duck','DUCK']].map(([id,n])=>'<label><span>'+n+'</span><select id="tg_'+id+'"><option value="hold">Hold (press = on, release = off)</option><option value="toggle">Toggle (tap on / tap off)</option></select></label>').join('');
  c.innerHTML=`<h2>Phone / touch controls</h2>
-<p>The screen is split: <b>left half = move</b>, <b>right half = look</b>. A finger that starts on a button follows the half the button sits in (right half: slide to look · left half: slide to move; a plain press never moves).</p>
+<p>The screen is split: <b>lower-left quarter = move</b>, <b>right half = look</b>. The upper-left half does not move the player. A finger that starts on a button follows its zone (right half: slide to look · lower-left: slide to move; a plain press never moves).</p>
 <label><span>Control mode</span><select id="pcmode"><option value="auto">Auto-detect</option><option value="phone">Phone (touch)</option><option value="pc">PC (keyboard + mouse)</option></select></label>
 <label><span>Look sensitivity</span><input type="range" id="pcsens" min="0.5" max="4" step="0.1"></label>
 <label><span>Button size</span><input type="range" id="pcsize" min="0.6" max="1.6" step="0.05"></label>
