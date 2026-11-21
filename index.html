@@ -39,7 +39,7 @@ kbd{border:1px solid var(--edge);padding:0 4px;font:11px monospace;color:var(--i
 #box::-webkit-scrollbar{width:8px}#box::-webkit-scrollbar-thumb{background:var(--edge);border-radius:4px}
 h1{font-size:16px}h2{margin:10px 0 3px}.btn{padding:3px 10px}.btn.p{padding:5px 16px}
 #tabs{position:sticky;top:-10px;z-index:2;background:var(--panel);padding:4px 0;display:flex;gap:4px;flex-wrap:wrap}
-.ng{display:grid;grid-template-columns:1fr 1fr;gap:12px}#maps{max-height:190px;overflow:auto}@media(max-width:520px){.ng{grid-template-columns:1fr}}
+.ng{display:grid;grid-template-columns:1fr 1fr;gap:12px}#maps{max-height:190px;overflow:auto}#mapPanel h3{color:var(--acc);font-size:12px}@media(max-width:520px){.ng{grid-template-columns:1fr}}
 #tabs,#box h1{display:none!important}
 body.mainscr #menu,body.mainscr #menu.home{background:#000}
 body.mainscr #ingamechat,body.mainscr #scoreboard,body.mainscr #hud,body.mainscr #dm,body.mainscr #cross,body.mainscr #fps,body.mainscr #msg,body.mainscr #nomodel,body.mainscr #lockhint,body.mainscr #scope,body.mainscr #hit,body.mainscr #flashov,body.mainscr canvas{display:none!important}
@@ -122,9 +122,9 @@ body.phone #ingamechat{top:auto!important;bottom:26%!important;left:8px!importan
 <div id="bhead"><button class="btn" id="bback">← Back</button><b id="bname"></b></div>
 <nav id="tabs"><button class="btn" data-t="play">New Game</button><button class="btn" data-t="maps">Map files</button><button class="btn" data-t="weps">Weapons</button><button class="btn" data-t="models">Models</button><button class="btn" data-t="set">Settings</button></nav>
 <section class="tab" id="t-play">
-<div class="ng"><div><h2>Map</h2><div id="maps"></div></div>
-<div><h2>Game</h2>
+<div class="ng"><div><h2>Game</h2>
 <label><span>Mode</span><select id="gx"><option value="dm">Deathmatch</option><option value="tdm">Team Deathmatch</option><option value="bomb">Bomb Defusal</option></select></label>
+<div id="mapPanel"><h3 style="margin:8px 0 4px">Maps</h3><div id="maps"></div></div>
 <label><span>Bots</span><input type="number" id="gb" min="0" max="10" style="width:60px"></label>
 <label><span>Difficulty</span><select id="gd"><option value="0">Easy</option><option value="1">Normal</option><option value="2">Hard</option><option value="3">Expert</option></select></label>
 <label><span>Bot weapons</span><select id="gw"><option value="all">Any</option><option value="pistols">Pistols</option><option value="smg">SMG</option><option value="rifles">Rifles</option><option value="snipers">Snipers</option><option value="mg">Machine gun</option></select></label>
@@ -177,7 +177,7 @@ body.phone #ingamechat{top:auto!important;bottom:26%!important;left:8px!importan
 <p>Pick a folder that contains your packs: <b>[pack_name]/model</b> (v_ak47.mdl …) and <b>[pack_name]/sound</b> (ak47-1.wav …). Each pack is stored separately and you choose which one to use.</p>
 <div id="packs"></div><p><button class="btn p" id="addpack">Add pack folder…</button><input type="file" id="packf" webkitdirectory multiple hidden>
 <button class="btn p" id="addzip">Add pack ZIP…</button><input type="file" id="packz" accept=".zip,application/zip,application/x-zip-compressed,application/octet-stream" multiple hidden></p>
-<p><small>iPhone/iPad: nén pack thành .zip (bên trong có thư mục <b>model</b> và <b>sound</b>, hoặc <b>[tên_pack]/model</b> và <b>[tên_pack]/sound</b>) rồi chọn ZIP ở đây. PC/Android dùng được cả hai cách.</small></p><h3 style="margin:12px 0 4px">viewmodel_offset</h3>
+<p><small>iPhone/iPad: compress the pack into .zip (with a folder named <b>model</b> and <b>sound</b>, or <b>[pack_name]/model</b> and <b>[pack_name]/sound</b>) then select the ZIP file here. Both methods work on PC and Android.</small></p><h3 style="margin:12px 0 4px">viewmodel_offset</h3>
 <label><span>X (left / right)</span><input type="range" id="vox" min="-10" max="10" step="0.1"><b id="voxn"></b></label>
 <label><span>Y (down / up)</span><input type="range" id="voy" min="-10" max="10" step="0.1"><b id="voyn"></b></label>
 <label><span>Z (back / forward)</span><input type="range" id="voz" min="-10" max="10" step="0.1"><b id="vozn"></b></label>
@@ -547,19 +547,62 @@ function applyInfo(){const t=[];for(let n=0;n<3;n++){const w=WBY[S.load[n]],m=sl
 async function applyLoadout(){for(let n=0;n<6;n++)slots[n]=buildWeapon(S.load[n]);
  const r=null;let pmx=null;
  setPlayer(pmx);equip(cs,true);applyInfo();}
-function renderLib(){const mdls=lib.filter(r=>r.type==='mdl'),bsps=lib.filter(r=>r.type==='bsp'),on=(a,b)=>String(a)===String(b);
- const bt=r=>/^de_/i.test(r.name),row=(id,n,sub,x)=>`<div class="li map${on(S.map,id)?' on':''}" data-m="${id}"><span>${n}</span><small>${sub}</small>${x||''}</div>`,
-  brow=r=>row(r.id,esc(r.name),'BSP · '+Math.round(r.size/1024)+' KB','<button class="x" data-id="'+r.id+'" title="Remove">✕</button>');
- $('maps').innerHTML='<div class="mh">Deathmatch / Team Deathmatch</div>'+[['village','Village (Team Deathmatch)'],['arena','DM Arena'],['wh','DM Warehouse'],['train','Training range'],['test','Movement test arena']].map(([a,n])=>row(a,n,'built-in')).join('')+bsps.filter(r=>!bt(r)).map(brow).join('')+'<div class="mh">Bomb Defusal</div>'+row('bomb','de_box (test)','built-in')+bsps.filter(bt).map(brow).join('');
- $('lib').innerHTML=mdls.length?mdls.map(r=>`<div class="li"><img class="th" data-id="${r.id}" alt=""><span>${esc(r.name)}</span><small>${Math.round(r.size/1024)} KB</small><button class="x" data-id="${r.id}" title="Remove">✕</button></div>`).join(''):'<small>No models yet. Add .mdl files; they are saved in this browser.</small>';
- $('wads').innerHTML=lib.filter(r=>r.type==='wad').map(r=>`<div class="li"><span>${esc(r.name)}</span><small>WAD · ${Math.round(r.size/1024)} KB</small><button class="x" data-id="${r.id}" title="Remove">✕</button></div>`).join('')||'<small>No WAD files.</small>';
- $('maps').insertAdjacentHTML('beforeend',FMAPS.length?'<div class="mh">Maps từ thư mục map/</div>'+FMAPS.map(id=>row(id,esc(MAPS[id].name),(MAPS[id].mode||'dm').toUpperCase()+' · map/')).join(''):'');
- $('maps').insertAdjacentHTML('beforeend',lib.filter(r=>r.type==='cmap').map(r=>`<div class="li map${on(S.map,r.id)?' on':''}" data-m="${r.id}"><span>${esc(r.name)}</span><small>custom</small><button class="btn ed" data-id="${r.id}" title="Edit">✎</button><button class="x" data-id="${r.id}" title="Remove">✕</button></div>`).join(''));
+function renderLib(){
+ const mdls=lib.filter(r=>r.type==='mdl'),bsps=lib.filter(r=>r.type==='bsp'),
+       on=(a,b)=>String(a)===String(b);
+ const row=(id,n,sub,x='')=>
+  `<div class="li map${on(S.map,id)?' on':''}" data-m="${id}"><span>${n}</span><small>${sub}</small>${x}</div>`,
+  bt=r=>/^de_/i.test(r.name),
+  xb=id=>'<button class="x" data-id="'+id+'" title="Remove">✕</button>',
+  brow=r=>row(r.id,esc(r.name),'BSP · '+Math.round(r.size/1024)+' KB',xb(r.id)),
+  crow=r=>row(r.id,esc(r.name),'custom','<button class="btn ed" data-id="'+r.id+'" title="Edit">✎</button>'+xb(r.id)),
+  frow=id=>row(id,esc(MAPS[id].name),(MAPS[id].bomb?'Bomb':(MAPS[id].mode||'dm').toUpperCase())+' · map/'),
+  fm=FMAPS.filter(id=>MAPS[id]),
+  cm=lib.filter(r=>r.type==='cmap').map(r=>{let b=false;try{b=JSON.parse(new TextDecoder().decode(r.data)).mode==='bomb';}catch(e){}return{r,b};});
+ $('maps').innerHTML='<div class="mh">Deathmatch / Team Deathmatch</div>'
+  +[['village','Village (Team Deathmatch)'],['arena','DM Arena'],['wh','DM Warehouse'],['train','Training range'],['test','Movement test arena']].map(([a,n])=>row(a,n,'built-in')).join('')
+  +bsps.filter(r=>!bt(r)).map(brow).join('')
+  +fm.filter(id=>!MAPS[id].bomb).map(frow).join('')
+  +cm.filter(x=>!x.b).map(x=>crow(x.r)).join('')
+  +'<div class="mh">Bomb Defusal</div>'
+  +row('bomb','de_box (test)','built-in')
+  +bsps.filter(bt).map(brow).join('')
+  +fm.filter(id=>MAPS[id].bomb).map(frow).join('')
+  +cm.filter(x=>x.b).map(x=>crow(x.r)).join('');
+
+ $('lib').innerHTML=mdls.length?
+  mdls.map(r=>`<div class="li"><img class="th" data-id="${r.id}" alt=""><span>${esc(r.name)}</span><small>${Math.round(r.size/1024)} KB</small><button class="x" data-id="${r.id}" title="Remove">✕</button></div>`).join(''):
+  '<small>No models yet. Add .mdl files; they are saved in this browser.</small>';
+ $('wads').innerHTML=lib.filter(r=>r.type==='wad').map(r=>
+  `<div class="li"><span>${esc(r.name)}</span><small>WAD · ${Math.round(r.size/1024)} KB</small><button class="x" data-id="${r.id}" title="Remove">✕</button></div>`
+ ).join('')||'<small>No WAD files.</small>';
+
  document.querySelectorAll('#maps .ed').forEach(b=>b.onclick=e=>{e.stopPropagation();const r=lib.find(x=>x.id===+b.dataset.id);ED.boxes=JSON.parse(new TextDecoder().decode(r.data)).boxes;ED.name=r.name;S.map='draft';save();renderLib();loadMap();flash('Editing "'+r.name+'" · N place · Z undo',3500);});
- document.querySelectorAll('#maps .map').forEach(el=>el.onclick=()=>{const v=el.dataset.m;S.map=isNaN(v)?v:+v;err('');syncMode();save();renderLib();loadMap();});
- document.querySelectorAll('#maps .x,#lib .x,#wads .x').forEach(b=>b.onclick=async e=>{e.stopPropagation();const id=+b.dataset.id,wasWad=(lib.find(x=>x.id===id)||{}).type==='wad';await libDel(id);thumbs.delete(id);wadCache.delete(id);
-  for(const k in S.wep)if(S.wep[k]===id)delete S.wep[k];if(S.slots[3]===id)S.slots[3]=null;const mp=String(S.map)===String(id);if(mp)S.map='test';save();renderLib();applyLoadout();if(mp||(wasWad&&typeof S.map==='number'))loadMap();});
- queueThumbs();updatePlayerThumb();}
+ document.querySelectorAll('#maps .map').forEach(el=>{
+  el.onclick=e=>{
+   if(e.target.closest('button'))return;
+   const v=el.dataset.m;
+   S.map=isNaN(v)?v:+v;
+   err('');
+   syncMode();
+   save();
+   renderLib();
+   loadMap();
+  };
+ });
+ document.querySelectorAll('#maps .x,#lib .x,#wads .x').forEach(b=>b.onclick=async e=>{
+  e.stopPropagation();
+  const id=+b.dataset.id,wasWad=(lib.find(x=>x.id===id)||{}).type==='wad';
+  await libDel(id);thumbs.delete(id);wadCache.delete(id);
+  for(const k in S.wep)if(S.wep[k]===id)delete S.wep[k];
+  if(S.slots[3]===id)S.slots[3]=null;
+  const mp=String(S.map)===String(id);
+  if(mp)S.map='test';
+  save();renderLib();applyLoadout();
+  if(mp||(wasWad&&typeof S.map==='number'))loadMap();
+ });
+ queueThumbs();updatePlayerThumb();
+}
 async function addFiles(e,want){err('');let newMap=null,wadAdded=false;
  for(const f of e.target.files){try{const buf=await f.arrayBuffer(),id=new DataView(buf).getInt32(0,true),type=id===0x54534449?'mdl':id===30?'bsp':id===0x33444157?'wad':null;
   if(!type){err(f.name+': not a GoldSrc MDL or BSP.');continue;}
@@ -1013,7 +1056,7 @@ function loadUI(t,f){$('loading').style.display='flex';$('ltxt').textContent=t;$
 function loadDone(){$('loading').style.display='none';}
 function gmRead(){S.gm={mode:$('gx').value,team:S.gm.team||'CT',bots:clamp(+$('gb').value||0,0,10),diff:+$('gd').value,bw:$('gw').value,frag:clamp(+$('gf').value||30,5,200),time:clamp(+$('gt').value||0,0,60)};save();}
 (function(){const g=S.gm;$('gx').value=g.mode;$('gb').value=g.bots;$('gd').value=g.diff;$('gw').value=g.bw;$('gf').value=g.frag;$('gt').value=g.time;})();
-$('gx').onchange=()=>{const b=$('gx').value==='bomb';if(b&&!mapIsBomb(S.map))S.map=(lib.find(r=>r.type==='bsp'&&/^de_/i.test(r.name))||{id:'bomb'}).id;else if(!b&&mapIsBomb(S.map))S.map='arena';gmRead();save();renderLib();loadMap();};
+$('gx').onchange=()=>{const b=$('gx').value==='bomb';if(b&&!mapIsBomb(S.map))S.map=(lib.find(r=>r.type==='bsp'&&/^de_/i.test(r.name))||{id:'bomb'}).id;else if(!b&&mapIsBomb(S.map))S.map='arena';gmRead();save();renderLib();};
 let startBusy=false;
 $('go').onclick=async()=>{if(startBusy)return;startBusy=true;try{gmRead();if(S.gm.mode==='bomb'&&!mapIsBomb(S.map)){err('Bomb Defusal needs a de_ map');return;}loadUI('Preparing map…',.15);await loadMap();if(!world)throw new Error('Map was not created');if(S.gm.mode!=='dm'&&S.map!=='train'){loadDone();S.gm.team=await chooseTeam(S.gm.team);save();}FL=S.gm.frag;gmT=S.gm.time*60;P.fr=P.de=0;TSC.T=TSC.CT=0;P.money=800;GN={hegrenade:1,flashbang:2,smokegrenade:1};clearNades();clearPK();if(BM.on)clearBomb();P.hp=100;P.ar=100;P.dead=false;third=false;BM.on=S.gm.mode==='bomb';if(S.gm.mode==='tdm'&&S.map!=='train'){P.team=S.gm.team;S.load=tdmLoadout().concat(['hegrenade','flashbang','smokegrenade']);}else if(S.gm.mode==='dm'){S.load=['ak47','usp','knife','hegrenade','flashbang','smokegrenade'];}else{S.load=S.load.map((x,i)=>x||defLoad()[i]);}AM={};reloadT=0;initBots();restart();if(BM.on)startBomb();inMatch=true;loadDone();play();if(ASSETP&&typeof ASSETP.then==='function')ASSETP.then(()=>{if(inMatch)applyLoadout();}).catch(e=>console.warn('[assets]',e));}catch(e){console.error('[start]',e);loadDone();err('Cannot start match: '+(e&&e.message||e));flash('START ERROR: '+(e&&e.message||e),6000);}finally{startBusy=false;}};
 const BL=[],PK=[],SPL=[];let splM=null,splG=null;
@@ -1073,14 +1116,14 @@ $('vor').onclick=()=>{S.vo={x:0,y:0,z:0};[['vox','x'],['voy','y'],['voz','z']].f
 const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 if(IS_IOS)$('addpack').style.display='none';
 let pakoP=null;
-const loadPako=()=>pakoP||(pakoP=new Promise((res,rej)=>{if(window.pako)return res();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';s.onload=res;s.onerror=()=>rej(new Error('Không tải được bộ giải nén'));document.head.appendChild(s);}));
+const loadPako=()=>pakoP||(pakoP=new Promise((res,rej)=>{if(window.pako)return res();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';s.onload=res;s.onerror=()=>rej(new Error('Could not load the decompression library'));document.head.appendChild(s);}));
 async function inflateRaw(raw){
  if(window.DecompressionStream){try{return await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();}catch(e){}}
  await loadPako();const r=pako.inflateRaw(raw);return r.buffer.slice(r.byteOffset,r.byteOffset+r.byteLength);}
 async function readZip(file){
  const buf=await file.arrayBuffer(),dv=new DataView(buf),u8=new Uint8Array(buf),td=new TextDecoder();let e=-1;
  for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65557);i--)if(dv.getUint32(i,true)===0x06054b50){e=i;break;}
- if(e<0)throw new Error(file.name+': không phải file ZIP hợp lệ');
+ if(e<0)throw new Error(file.name+': is not a valid ZIP file');
  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const out=[];
  for(let i=0;i<n;i++){if(p+46>buf.byteLength||dv.getUint32(p,true)!==0x02014b50)break;
   const meth=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
@@ -1088,12 +1131,12 @@ async function readZip(file){
   if(name.endsWith('/')||/(^|\/)(__MACOSX\/|\._)/.test(name)||!/\.(mdl|wav|mp3|ogg)$/i.test(name))continue;
   if(lo+30>buf.byteLength||dv.getUint32(lo,true)!==0x04034b50)continue;
   const ds=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true);
-  if(ds+cs>buf.byteLength)throw new Error('Dữ liệu ZIP bị thiếu: '+name);
+  if(ds+cs>buf.byteLength)throw new Error('ZIP data is incomplete: '+name);
   out.push({name,meth,raw:u8.subarray(ds,ds+cs)});}
  return out;}
 async function zipsToFiles(zips){
  const res=[];let zi=0;
- for(const z of zips){loadUI('Đang giải nén '+z.name+'…',(zi++)/zips.length);
+ for(const z of zips){loadUI('Extracting '+z.name+'…',(zi++)/zips.length);
   const base=z.name.replace(/\.zip$/i,'')||'Imported',ents=await readZip(z);
   for(const en of ents){
    const segs=en.name.split('/').filter(Boolean).map(s=>/^models?$/i.test(s)?'model':/^sounds?$/i.test(s)?'sound':s);
@@ -1102,17 +1145,17 @@ async function zipsToFiles(zips){
    let data;
    if(en.meth===0)data=en.raw.slice().buffer;
    else if(en.meth===8)data=await inflateRaw(en.raw);
-   else throw new Error('Kiểu nén ZIP không hỗ trợ ('+en.meth+'): '+en.name);
+   else throw new Error('Unsupported ZIP compression method ('+en.meth+'): '+en.name);
    res.push({name:segs[segs.length-1],webkitRelativePath:segs.join('/'),arrayBuffer:async()=>data});}}
  return res;}
 $('addpack').onclick=()=>$('packf').click();
 $('packf').onchange=e=>{const l=[...e.target.files];e.target.value='';importPacks(l);};
 $('addzip').onclick=()=>$('packz').click();
 $('packz').onchange=async e=>{const l=[...e.target.files];e.target.value='';if(!l.length)return;err('');
- try{loadUI('Đang giải nén…',.05);await new Promise(r=>setTimeout(r,30));const fl=await zipsToFiles(l);loadDone();
-  if(!fl.length){err('ZIP không có thư mục model/ hoặc sound/');return;}
+ try{loadUI('Extracting…',.05);await new Promise(r=>setTimeout(r,30));const fl=await zipsToFiles(l);loadDone();
+  if(!fl.length){err('ZIP does not contain a model/ or sound/ folder');return;}
   await importPacks(fl);}
- catch(x){loadDone();err('ZIP lỗi: '+(x&&x.message||x));}};
+ catch(x){loadDone();err('ZIP error: '+(x&&x.message||x));}};
 /* ================= Online multiplayer (Supabase Realtime – Broadcast + Presence, no tables needed) ================= */
 const SB_URL='https://tujgyvpvvpogzvrfpjzi.supabase.co',SB_KEY='sb_publishable_7tNaSOCwlks2GGC2kewyYg_mxxSCSpK';
 const NET_HZ=12;
@@ -1460,7 +1503,7 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
  const stopLook=e=>{if(e.pointerId!==LK.id)return;const tap=e.type==='pointerup'&&false&&playing&&!tcEditing&&!buyOpen&&!igcOpen&&LK.mv<14&&performance.now()-LK.t0<300;LK.id=null;if(tap){semiLock=false;if(cs>=3&&GR[S.load[cs]]){startNadeHold(S.load[cs]);finishNadeHold();}else act('shoot',1);semiLock=false;}};
  document.addEventListener('pointerup',stopLook,{capture:true});document.addEventListener('pointercancel',stopLook,{capture:true});
  $('tcdone').onclick=()=>tcEdit(false);$('tcrst').onclick=()=>{S.pc.lay={};save();tcLayout();};$('tcplus').onclick=()=>tcScale(1.1);$('tcmin').onclick=()=>tcScale(1/1.1);
- $('tctog').onclick=()=>{if(!tcSel||!TGL.includes(tcSel)){flash('Chọn nút FIRE / JUMP / ALT / USE / DUCK trước',2000);return;}const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.t=!isTgl(tcSel);save();tcLayout();syncCtl();flash(tcSel.toUpperCase()+': '+(l.t?'TOGGLE (chạm bật / chạm tắt)':'HOLD (giữ mới có tác dụng)'),2200);};
+ $('tctog').onclick=()=>{if(!tcSel||!TGL.includes(tcSel)){flash('Select FIRE / JUMP / ALT / USE / DUCK first',2000);return;}const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.t=!isTgl(tcSel);save();tcLayout();syncCtl();flash(tcSel.toUpperCase()+': '+(l.t?'TOGGLE (tap to turn on / tap to turn off)':'HOLD (hold to activate)'),2200);};
  $('tchide').onclick=()=>{if(!tcSel)return;const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.on=l.on===false;save();tcLayout();};tcLayout();}
 /* ---- Controls panel (main menu -> Controls) + Performance (Settings > Game) ---- */
 const pcApply=()=>{save();updPhone();tcLayout();resize();applyFog();};
