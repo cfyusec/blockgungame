@@ -1,7 +1,7 @@
-Block gun game
+SUCHHHHH AAAA SUCCCCCKKKK GAAAMMMMEEEE
 
 IN DEVELOPING
 
 GAME: https://cfyusec.github.io/blockgungame/
 
-Multiplayer: Work not right
+Multiplayer: Working not right,im fixing
