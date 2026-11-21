@@ -122,9 +122,9 @@ body.phone #ingamechat{top:auto!important;bottom:26%!important;left:8px!importan
 <div id="bhead"><button class="btn" id="bback">← Back</button><b id="bname"></b></div>
 <nav id="tabs"><button class="btn" data-t="play">New Game</button><button class="btn" data-t="maps">Map files</button><button class="btn" data-t="weps">Weapons</button><button class="btn" data-t="models">Models</button><button class="btn" data-t="set">Settings</button></nav>
 <section class="tab" id="t-play">
-<div class="ng"><div><h2>Map</h2><div id="maps"></div></div>
-<div><h2>Game</h2>
+<div class="ng"><div><h2>Game</h2>
 <label><span>Mode</span><select id="gx"><option value="dm">Deathmatch</option><option value="tdm">Team Deathmatch</option><option value="bomb">Bomb Defusal</option></select></label>
+<div id="bombMapPanel" hidden><h3 style="margin:8px 0 4px">Bomb Maps</h3><div id="maps"></div></div>
 <label><span>Bots</span><input type="number" id="gb" min="0" max="10" style="width:60px"></label>
 <label><span>Difficulty</span><select id="gd"><option value="0">Easy</option><option value="1">Normal</option><option value="2">Hard</option><option value="3">Expert</option></select></label>
 <label><span>Bot weapons</span><select id="gw"><option value="all">Any</option><option value="pistols">Pistols</option><option value="smg">SMG</option><option value="rifles">Rifles</option><option value="snipers">Snipers</option><option value="mg">Machine gun</option></select></label>
@@ -140,7 +140,7 @@ body.phone #ingamechat{top:auto!important;bottom:26%!important;left:8px!importan
 <h2>Multiplayer</h2>
 <p><button class="btn p" id="mpq">Quick Match</button> <button class="btn" id="mpfindrooms" data-m="list">Find Rooms</button> <button class="btn" data-m="create">Create Room</button></p>
 <div class="mtabs"><button data-m="list" class="on">Room List</button><button data-m="players">Players</button><button data-m="chat">Chat</button></div>
-<div class="mpp" data-mp="list"><div class="chatrow" style="margin:6px 0"><input id="mprfind" maxlength="40" placeholder="Find room by name / code / mode…"><button class="btn" id="mprreset" type="button">Reset</button></div><div id="mprooms"><small>Press Find Rooms to search existing rooms. This only searches; it never creates a room.</small></div>
+<div class="mpp" data-mp="list"><div class="chatrow" style="margin:6px 0"><input id="mprfind" maxlength="40" placeholder="Find room by name / code / mode…"><button class="btn" id="mprreset" type="button">Reset</button></div><div id="mprooms"><small>Live lobby: rooms appear while at least one player is inside. Use Refresh to sync the list. Searching never creates a room.</small></div>
 <p><input id="mpj" maxlength="4" placeholder="CODE" style="width:84px;text-transform:uppercase"> <input id="mpjp" type="password" maxlength="16" placeholder="password" style="width:110px"> <button class="btn" id="mpg">Join Room</button></p></div>
 <div class="mpp" data-mp="players" hidden><div id="mplist"></div></div>
 <div class="mpp" data-mp="chat" hidden><div id="mpchat" class="chatlog"></div><div class="chatrow"><input id="mpchatin" maxlength="180" placeholder="Message room…"><button class="btn p" id="mpchatsend">Send</button></div></div>
@@ -177,7 +177,7 @@ body.phone #ingamechat{top:auto!important;bottom:26%!important;left:8px!importan
 <p>Pick a folder that contains your packs: <b>[pack_name]/model</b> (v_ak47.mdl …) and <b>[pack_name]/sound</b> (ak47-1.wav …). Each pack is stored separately and you choose which one to use.</p>
 <div id="packs"></div><p><button class="btn p" id="addpack">Add pack folder…</button><input type="file" id="packf" webkitdirectory multiple hidden>
 <button class="btn p" id="addzip">Add pack ZIP…</button><input type="file" id="packz" accept=".zip,application/zip,application/x-zip-compressed,application/octet-stream" multiple hidden></p>
-<p><small>iPhone/iPad: nén pack thành .zip (bên trong có thư mục <b>model</b> và <b>sound</b>, hoặc <b>[tên_pack]/model</b> và <b>[tên_pack]/sound</b>) rồi chọn ZIP ở đây. PC/Android dùng được cả hai cách.</small></p><h3 style="margin:12px 0 4px">viewmodel_offset</h3>
+<p><small>iPhone/iPad: compress the pack into .zip (with a folder named <b>model</b> and <b>sound</b>, or <b>[pack_name]/model</b> and <b>[pack_name]/sound</b>) then select the ZIP file here. Both methods work on PC and Android.</small></p><h3 style="margin:12px 0 4px">viewmodel_offset</h3>
 <label><span>X (left / right)</span><input type="range" id="vox" min="-10" max="10" step="0.1"><b id="voxn"></b></label>
 <label><span>Y (down / up)</span><input type="range" id="voy" min="-10" max="10" step="0.1"><b id="voyn"></b></label>
 <label><span>Z (back / forward)</span><input type="range" id="voz" min="-10" max="10" step="0.1"><b id="vozn"></b></label>
@@ -547,13 +547,14 @@ function applyInfo(){const t=[];for(let n=0;n<3;n++){const w=WBY[S.load[n]],m=sl
 async function applyLoadout(){for(let n=0;n<6;n++)slots[n]=buildWeapon(S.load[n]);
  const r=null;let pmx=null;
  setPlayer(pmx);equip(cs,true);applyInfo();}
-function renderLib(){const mdls=lib.filter(r=>r.type==='mdl'),bsps=lib.filter(r=>r.type==='bsp'),on=(a,b)=>String(a)===String(b);
+function renderLib(){const mdls=lib.filter(r=>r.type==='mdl'),bsps=lib.filter(r=>r.type==='bsp'),on=(a,b)=>String(a)===String(b);const bmp=$('bombMapPanel');if(bmp)bmp.hidden=$('gx').value!=='bomb';
  const bt=r=>/^de_/i.test(r.name),row=(id,n,sub,x)=>`<div class="li map${on(S.map,id)?' on':''}" data-m="${id}"><span>${n}</span><small>${sub}</small>${x||''}</div>`,
   brow=r=>row(r.id,esc(r.name),'BSP · '+Math.round(r.size/1024)+' KB','<button class="x" data-id="'+r.id+'" title="Remove">✕</button>');
- $('maps').innerHTML='<div class="mh">Deathmatch / Team Deathmatch</div>'+[['village','Village (Team Deathmatch)'],['arena','DM Arena'],['wh','DM Warehouse'],['train','Training range'],['test','Movement test arena']].map(([a,n])=>row(a,n,'built-in')).join('')+bsps.filter(r=>!bt(r)).map(brow).join('')+'<div class="mh">Bomb Defusal</div>'+row('bomb','de_box (test)','built-in')+bsps.filter(bt).map(brow).join('');
+ const bombRows=[row('bomb','de_box (test)','built-in'),...bsps.filter(bt).map(brow)];
+ $('maps').innerHTML=bombRows.join('')||'<small>No Bomb Defusal maps available.</small>';
  $('lib').innerHTML=mdls.length?mdls.map(r=>`<div class="li"><img class="th" data-id="${r.id}" alt=""><span>${esc(r.name)}</span><small>${Math.round(r.size/1024)} KB</small><button class="x" data-id="${r.id}" title="Remove">✕</button></div>`).join(''):'<small>No models yet. Add .mdl files; they are saved in this browser.</small>';
  $('wads').innerHTML=lib.filter(r=>r.type==='wad').map(r=>`<div class="li"><span>${esc(r.name)}</span><small>WAD · ${Math.round(r.size/1024)} KB</small><button class="x" data-id="${r.id}" title="Remove">✕</button></div>`).join('')||'<small>No WAD files.</small>';
- $('maps').insertAdjacentHTML('beforeend',FMAPS.length?'<div class="mh">Maps từ thư mục map/</div>'+FMAPS.map(id=>row(id,esc(MAPS[id].name),(MAPS[id].mode||'dm').toUpperCase()+' · map/')).join(''):'');
+ $('maps').insertAdjacentHTML('beforeend',FMAPS.filter(id=>MAPS[id]&&MAPS[id].mode==='bomb').map(id=>row(id,esc(MAPS[id].name),'map/ · Bomb Defusal')).join(''));
  $('maps').insertAdjacentHTML('beforeend',lib.filter(r=>r.type==='cmap').map(r=>`<div class="li map${on(S.map,r.id)?' on':''}" data-m="${r.id}"><span>${esc(r.name)}</span><small>custom</small><button class="btn ed" data-id="${r.id}" title="Edit">✎</button><button class="x" data-id="${r.id}" title="Remove">✕</button></div>`).join(''));
  document.querySelectorAll('#maps .ed').forEach(b=>b.onclick=e=>{e.stopPropagation();const r=lib.find(x=>x.id===+b.dataset.id);ED.boxes=JSON.parse(new TextDecoder().decode(r.data)).boxes;ED.name=r.name;S.map='draft';save();renderLib();loadMap();flash('Editing "'+r.name+'" · N place · Z undo',3500);});
  document.querySelectorAll('#maps .map').forEach(el=>el.onclick=()=>{const v=el.dataset.m;S.map=isNaN(v)?v:+v;err('');syncMode();save();renderLib();loadMap();});
@@ -1073,14 +1074,14 @@ $('vor').onclick=()=>{S.vo={x:0,y:0,z:0};[['vox','x'],['voy','y'],['voz','z']].f
 const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 if(IS_IOS)$('addpack').style.display='none';
 let pakoP=null;
-const loadPako=()=>pakoP||(pakoP=new Promise((res,rej)=>{if(window.pako)return res();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';s.onload=res;s.onerror=()=>rej(new Error('Không tải được bộ giải nén'));document.head.appendChild(s);}));
+const loadPako=()=>pakoP||(pakoP=new Promise((res,rej)=>{if(window.pako)return res();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';s.onload=res;s.onerror=()=>rej(new Error('Could not load the decompression library'));document.head.appendChild(s);}));
 async function inflateRaw(raw){
  if(window.DecompressionStream){try{return await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();}catch(e){}}
  await loadPako();const r=pako.inflateRaw(raw);return r.buffer.slice(r.byteOffset,r.byteOffset+r.byteLength);}
 async function readZip(file){
  const buf=await file.arrayBuffer(),dv=new DataView(buf),u8=new Uint8Array(buf),td=new TextDecoder();let e=-1;
  for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65557);i--)if(dv.getUint32(i,true)===0x06054b50){e=i;break;}
- if(e<0)throw new Error(file.name+': không phải file ZIP hợp lệ');
+ if(e<0)throw new Error(file.name+': is not a valid ZIP file');
  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const out=[];
  for(let i=0;i<n;i++){if(p+46>buf.byteLength||dv.getUint32(p,true)!==0x02014b50)break;
   const meth=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
@@ -1088,12 +1089,12 @@ async function readZip(file){
   if(name.endsWith('/')||/(^|\/)(__MACOSX\/|\._)/.test(name)||!/\.(mdl|wav|mp3|ogg)$/i.test(name))continue;
   if(lo+30>buf.byteLength||dv.getUint32(lo,true)!==0x04034b50)continue;
   const ds=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true);
-  if(ds+cs>buf.byteLength)throw new Error('Dữ liệu ZIP bị thiếu: '+name);
+  if(ds+cs>buf.byteLength)throw new Error('ZIP data is incomplete: '+name);
   out.push({name,meth,raw:u8.subarray(ds,ds+cs)});}
  return out;}
 async function zipsToFiles(zips){
  const res=[];let zi=0;
- for(const z of zips){loadUI('Đang giải nén '+z.name+'…',(zi++)/zips.length);
+ for(const z of zips){loadUI('Extracting '+z.name+'…',(zi++)/zips.length);
   const base=z.name.replace(/\.zip$/i,'')||'Imported',ents=await readZip(z);
   for(const en of ents){
    const segs=en.name.split('/').filter(Boolean).map(s=>/^models?$/i.test(s)?'model':/^sounds?$/i.test(s)?'sound':s);
@@ -1102,17 +1103,17 @@ async function zipsToFiles(zips){
    let data;
    if(en.meth===0)data=en.raw.slice().buffer;
    else if(en.meth===8)data=await inflateRaw(en.raw);
-   else throw new Error('Kiểu nén ZIP không hỗ trợ ('+en.meth+'): '+en.name);
+   else throw new Error('Unsupported ZIP compression method ('+en.meth+'): '+en.name);
    res.push({name:segs[segs.length-1],webkitRelativePath:segs.join('/'),arrayBuffer:async()=>data});}}
  return res;}
 $('addpack').onclick=()=>$('packf').click();
 $('packf').onchange=e=>{const l=[...e.target.files];e.target.value='';importPacks(l);};
 $('addzip').onclick=()=>$('packz').click();
 $('packz').onchange=async e=>{const l=[...e.target.files];e.target.value='';if(!l.length)return;err('');
- try{loadUI('Đang giải nén…',.05);await new Promise(r=>setTimeout(r,30));const fl=await zipsToFiles(l);loadDone();
-  if(!fl.length){err('ZIP không có thư mục model/ hoặc sound/');return;}
+ try{loadUI('Extracting…',.05);await new Promise(r=>setTimeout(r,30));const fl=await zipsToFiles(l);loadDone();
+  if(!fl.length){err('ZIP does not contain a model/ or sound/ folder');return;}
   await importPacks(fl);}
- catch(x){loadDone();err('ZIP lỗi: '+(x&&x.message||x));}};
+ catch(x){loadDone();err('ZIP error: '+(x&&x.message||x));}};
 /* ================= Online multiplayer (Supabase Realtime – Broadcast + Presence, no tables needed) ================= */
 const SB_URL='https://tujgyvpvvpogzvrfpjzi.supabase.co',SB_KEY='sb_publishable_7tNaSOCwlks2GGC2kewyYg_mxxSCSpK';
 const NET_HZ=12;
@@ -1128,34 +1129,118 @@ let RINFO={name:'',ph:''},SUBCB=null;try{$('mpn').value=localStorage.getItem('gs
 function mpList(){const s=sbInit();if(!s||LOBBY)return;LOBBY=s.channel('lobby',{config:{presence:{key:ME},broadcast:{self:false}}});
  LOBBY.on('broadcast',{event:'global-chat'},({payload})=>{if(payload&&payload.id!==ME&&payload.text){chatLine(payload.name||'Player',payload.text,'global',true);chatLine(payload.name||'Player',payload.text,'global',false);}});
  LOBBY.on('presence',{event:'sync'},()=>{const st=LOBBY.presenceState(),m={};for(const k in st)for(const e of st[k])if(e.code&&Number(e.n)>0)m[e.code]=e;LOB=Object.values(m);mpRenderRooms();}).subscribe();}
-function mpRenderRooms(){const L=$('mprooms');if(!L)return;const q=($('mprfind')?.value||'').trim().toLowerCase();const rows=LOB.filter(r=>{const c=r.cfg||{};return [r.name,r.code,c.map,c.mode].some(v=>String(v||'').toLowerCase().includes(q));}).sort((a,b)=>(Number(!!a.started)-Number(!!b.started))||(Number(b.n)-Number(a.n)));L.innerHTML=rows.length?'':'<small>No matching rooms. Try another search or refresh.</small>';for(const r of rows){const e=document.createElement('div');e.className='li';e.innerHTML='<span>'+(r.ph?'🔒 ':'')+esc(r.name||r.code)+' · '+esc((r.cfg.mode||'dm').toUpperCase())+' · '+esc(r.cfg.map||'arena')+'</span><small>'+r.n+'/10'+(r.started?' · playing':'')+'</small><button class="btn">Join</button>';e.querySelector('button').onclick=()=>mpJoin(r.code,r.ph?(prompt('Password for "'+(r.name||r.code)+'":')||''):'');L.appendChild(e);}}
-async function mpCreate(){if(!sbInit())return;mpList();let code;do{code=Array.from({length:4},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random()*32|0]).join('');}while(LOB.some(r=>r.code===code));
- const mode=$('mprmode').value||'dm';const m=mode==='bomb'?'bomb':((MAPS[S.map]&&S.map!=='bomb'&&S.map!=='train')||S.map==='test'?S.map:'arena');RINFO={name:($('mprn').value||'Room '+code).slice(0,20),ph:await rhash($('mprp').value)};
- mpEnter(code,{map:m,mode,frag:S.gm.frag});}
-async function mpJoin(code,pw){if(!sbInit())return;mpList();code=String(code||$('mpj').value).trim().toUpperCase();if(pw===undefined)pw=$('mpjp').value;const r=LOB.find(x=>x.code===code);if(!r){mpSt('Room not found.');return;}if(r.n>=10){mpSt('Room is full.');return;}if(r.ph&&await rhash(pw)!==r.ph){mpSt('Wrong password.');return;}RINFO={name:r.name,ph:r.ph};mpEnter(code,r.cfg);}
-let mpSearching=false;async function mpQuick(){
- if(mpSearching||ROOM)return;if(!sbInit())return;mpSearching=true;const b=$('mpq');b.disabled=true;const oldLabel=b.textContent;b.textContent='Searching…';
- try{mpList();mpSt('Searching for existing rooms…');
-  // Give the lobby Presence subscription time to receive the current room list.
-  await new Promise(r=>setTimeout(r,650));
-  const q=($('mprfind')?.value||'').trim().toLowerCase();const candidates=LOB.filter(r=>r&&r.code&&r.cfg&&!r.ph&&Number(r.n)<10&&(!q||[r.name,r.code,r.cfg.map,r.cfg.mode].some(v=>String(v||'').toLowerCase().includes(q))))
+function mpRenderRooms(){
+ const L=$('mprooms');if(!L)return;
+ const q=($('mprfind')?.value||'').trim().toLowerCase();
+ const rows=LOB.filter(r=>{const c=r.cfg||{};return [r.name,r.code,c.map,c.mode].some(v=>String(v||'').toLowerCase().includes(q));});
+ const meta=LOBBY_LAST_SYNC?new Date(LOBBY_LAST_SYNC).toLocaleTimeString():'—';
+ L.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;margin:4px 0 7px;color:var(--mute)"><small>LIVE LOBBY · '+LOB.length+' room(s)</small><small>Updated '+meta+'</small></div>';
+ if(!rows.length){L.insertAdjacentHTML('beforeend','<small>No rooms found. Create one or refresh the list.</small>');return;}
+ for(const r of rows){
+  const e=document.createElement('div');e.className='li';
+  const title=document.createElement('span');title.textContent=(r.ph?'🔒 ':'')+(r.name||r.code)+' · '+String((r.cfg&&r.cfg.mode)||'dm').toUpperCase()+' · '+((r.cfg&&r.cfg.map)||'arena');
+  const count=document.createElement('small');count.textContent=(Number(r.n)||0)+'/10'+(r.started?' · in game':' · waiting');
+  const join=document.createElement('button');join.className='btn';join.textContent='Join';join.disabled=Number(r.n)>=10;
+  join.onclick=()=>mpJoin(r.code,r.ph?(prompt('Password for "'+(r.name||r.code)+'":')||''):'');
+  e.append(title,count,join);L.appendChild(e);
+ }
+}
+let LOBBY_READY=false,LOBBY_PROMISE=null,LOBBY_SYNCED=false,LOBBY_SYNC_WAITERS=[],LOBBY_LAST_SYNC=0;
+function readLobbyRooms(){
+ if(!LOBBY)return;
+ const state=LOBBY.presenceState()||{},byCode=new Map();
+ for(const key of Object.keys(state))for(const entry of (state[key]||[])){
+  if(!entry||!entry.code||Number(entry.n)<=0)continue;
+  const code=String(entry.code).toUpperCase(),prev=byCode.get(code);
+  if(!prev){byCode.set(code,Object.assign({},entry,{code,n:Number(entry.n)||0,started:!!entry.started}));continue;}
+  prev.started=prev.started||!!entry.started;
+  if(Number(entry.ts||0)>=Number(prev.ts||0)){const st=prev.started;Object.assign(prev,entry,{code,n:Number(entry.n)||0,started:st||!!entry.started});}
+ }
+ LOB=[...byCode.values()].filter(r=>r.code&&r.n>0);
+ LOB.sort((a,b)=>(Number(!!a.started)-Number(!!b.started))||(Number(b.n)-Number(a.n))||String(a.name||'').localeCompare(String(b.name||'')));
+ mpRenderRooms();
+}
+function mpWaitLobbySync(ms=1800){
+ if(LOBBY_SYNCED)return Promise.resolve(true);
+ return new Promise(resolve=>{
+  let done=false;const finish=v=>{if(done)return;done=true;clearTimeout(timer);const i=LOBBY_SYNC_WAITERS.indexOf(onSync);if(i>=0)LOBBY_SYNC_WAITERS.splice(i,1);resolve(v);};
+  const onSync=()=>finish(true),timer=setTimeout(()=>finish(LOBBY_SYNCED),ms);LOBBY_SYNC_WAITERS.push(onSync);
+ });
+}
+function mpList(){
+ const s=sbInit();if(!s)return Promise.resolve(false);
+ if(LOBBY&&LOBBY_READY){readLobbyRooms();return Promise.resolve(true);}
+ if(LOBBY_PROMISE)return LOBBY_PROMISE;
+ if(LOBBY){try{SB.removeChannel(LOBBY);}catch(_){}LOBBY=null;}
+ LOBBY_READY=false;LOBBY_SYNCED=false;
+ LOBBY_PROMISE=new Promise(resolve=>{
+  let settled=false;
+  const finish=v=>{if(settled)return;settled=true;clearTimeout(timer);if(!v){LOBBY_READY=false;const old=LOBBY;LOBBY=null;if(old)try{SB.removeChannel(old);}catch(_){}}resolve(v);};
+  const timer=setTimeout(()=>{mpSt('Lobby connection timed out. Check your internet and try again.');finish(false);},9000);
+  const channel=s.channel('lobby',{config:{presence:{key:ME},broadcast:{self:false}}});LOBBY=channel;
+  channel.on('broadcast',{event:'global-chat'},({payload})=>{if(payload&&payload.id!==ME&&payload.text){chatLine(payload.name||'Player',payload.text,'global',true);chatLine(payload.name||'Player',payload.text,'global',false);}});
+  channel.on('presence',{event:'sync'},()=>{
+   if(LOBBY!==channel)return;LOBBY_SYNCED=true;LOBBY_LAST_SYNC=Date.now();readLobbyRooms();
+   const waiters=LOBBY_SYNC_WAITERS.splice(0);waiters.forEach(fn=>fn());
+  });
+  channel.subscribe(status=>{
+   if(LOBBY!==channel)return;
+   if(status==='SUBSCRIBED'){LOBBY_READY=true;mpSt('Connected to lobby.');finish(true);}
+   else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){mpSt('Lobby connection error ('+status+'). Try again.');finish(false);}
+  });
+ });
+ return LOBBY_PROMISE.finally(()=>{LOBBY_PROMISE=null;});
+}
+async function mpCreate(){
+ if(!await mpList())return;await mpWaitLobbySync();
+ if(ROOM){mpSt('Leave your current room before creating another one.');return;}
+ let code,tries=0;do{code=Array.from({length:4},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random()*32|0]).join('');tries++;}while(LOB.some(r=>r.code===code)&&tries<30);
+ if(LOB.some(r=>r.code===code)){mpSt('Could not reserve a room code. Try again.');return;}
+ const mode=$('mprmode').value||'dm',m=mode==='bomb'?'bomb':((MAPS[S.map]&&S.map!=='bomb'&&S.map!=='train')||S.map==='test'?S.map:'arena');
+ RINFO={name:($('mprn').value||'Room '+code).trim().slice(0,20)||'Room '+code,ph:await rhash($('mprp').value)};
+ mpSt('Creating room '+code+'…');mpEnter(code,{map:m,mode,frag:S.gm.frag});
+}
+async function mpJoin(code,pw){
+ if(!await mpList())return;if(!await mpWaitLobbySync()){mpSt('Room list is still syncing. Press Refresh and try again.');return;}
+ code=String(code||$('mpj').value).trim().toUpperCase();
+ if(!/^[A-Z0-9]{4}$/.test(code)){mpSt('Enter a valid 4-character room code.');return;}
+ if(pw===undefined)pw=$('mpjp').value;
+ const r=LOB.find(x=>x.code===code);
+ if(!r){mpSt('Room not found. Refresh the room list and try again.');return;}
+ if(Number(r.n)>=10){mpSt('Room is full.');return;}
+ if(r.ph&&await rhash(pw)!==r.ph){mpSt('Wrong password.');return;}
+ if(ROOM){mpSt('Leave your current room before joining another one.');return;}
+ RINFO={name:r.name||r.code,ph:r.ph||''};mpSt('Joining '+(r.name||code)+'…');mpEnter(code,r.cfg||{map:'arena',mode:'dm',frag:30});
+}
+let mpSearching=false;
+async function mpQuick(){
+ if(mpSearching||ROOM)return;if(!await mpList())return;
+ mpSearching=true;const b=$('mpq');b.disabled=true;const oldLabel=b.textContent;b.textContent='Searching…';
+ try{
+  mpSt('Searching for public rooms…');if(!await mpWaitLobbySync(2500))throw new Error('Room list sync timed out');await new Promise(r=>setTimeout(r,250));readLobbyRooms();
+  const q=($('mprfind')?.value||'').trim().toLowerCase();
+  const candidates=LOB.filter(r=>r&&r.code&&r.cfg&&!r.ph&&Number(r.n)<10&&(!q||[r.name,r.code,r.cfg.map,r.cfg.mode].some(v=>String(v||'').toLowerCase().includes(q))))
    .sort((a,b)=>((a.started?1:0)-(b.started?1:0))||(Number(b.n)-Number(a.n))||(a.code||'').localeCompare(b.code||''));
-  const c=candidates[0];
-  if(c){RINFO={name:c.name||c.code,ph:''};mpSt('Found '+(c.name||c.code)+' · joining…');mpEnter(c.code,c.cfg);}
-  else{mpSt('No public rooms available right now. Room search only — no room was created.');}
+  const c=candidates[0];if(c){RINFO={name:c.name||c.code,ph:''};mpSt('Found '+(c.name||c.code)+' · joining…');mpEnter(c.code,c.cfg);}
+  else mpSt('No public rooms available. Search did not create a room.');
  }catch(e){console.error('[matchmaking]',e);mpSt('Could not search rooms. Try again.');}
  finally{mpSearching=false;b.disabled=false;b.textContent=oldLabel;}
 }
 let pmT=0;function pushMe(p){Object.assign(MYP,p);if(!CH||!CHR||pmT)return;pmT=setTimeout(()=>{pmT=0;if(CH&&CHR)CH.track(MYP);},400);}
-function mpEnter(code,cfg){if(CH){const old=CH;CH=null;CHR=false;SB.removeChannel(old);}ROOM=code;RCFG=cfg;MYP={name:($('mpn').value||'Player').replace(/[^\w \-.]/g,'').slice(0,14)||'Player',team:'p',k:0,d:0,hp:100,ar:100,j:Date.now(),started:false};
+function publishLobbyRoom(){
+ if(!LOBBY||!LOBBY_READY||!ROOM||!CH||!CHR)return;
+ const payload={code:ROOM,cfg:RCFG||{map:'arena',mode:'dm',frag:30},n:Math.max(1,RS.length),started:!!ONL||RS.some(p=>p.started),name:RINFO.name||ROOM,ph:RINFO.ph||'',ts:Date.now()};
+ LOBBY.track(payload).catch(e=>console.warn('[lobby] presence update:',e));
+}
+function mpEnter(code,cfg){if(!SB||!LOBBY_READY){mpSt('Lobby is not connected. Refresh and try again.');return;}if(CH){const old=CH;CH=null;CHR=false;try{SB.removeChannel(old);}catch(_){}}RS=[];ROOM=code;RCFG=cfg;MYP={name:($('mpn').value||'Player').replace(/[^\w \-.]/g,'').slice(0,14)||'Player',team:'p',k:0,d:0,hp:100,ar:100,j:Date.now(),started:false};
  CH=SB.channel('room:'+code,{config:{broadcast:{self:false},presence:{key:ME}}});
  CH.on('presence',{event:'sync'},()=>{const st=CH.presenceState();RS=Object.keys(st).map(id=>Object.assign({id},st[id][st[id].length-1]));
   for(const p of RS){if(p.id===ME)continue;if(!RPL.has(p.id))addRemote(p);const r=RPL.get(p.id);r.n=p.name;r.team=teamFor(p);r.hp=p.hp;r.fr=p.k;r.j=p.j||0;r.gone=0;}for(const r of RPL.values())if(!RS.some(p=>p.id===r.id)&&!r.gone)r.gone=Date.now();
-  const h=hostOf();ISHOST=!!h&&h.id===ME;if(LOBBY)LOBBY.track({code,cfg:RCFG,n:RS.length,started:RS.some(p=>p.started),name:RINFO.name,ph:RINFO.ph,ts:Date.now()});mpRender();
+  const h=hostOf();ISHOST=!!h&&h.id===ME;publishLobbyRoom();mpRender();
   if(!ONL&&RS.some(p=>p.started&&p.id!==ME))startOnline(RCFG,MYTEAM);});
  CH.on('broadcast',{event:'state'},({payload})=>{if(!payload)return;try{onState(payload.a);}catch(err){console.error('[net]',err);}(payload.e||[]).forEach(ev=>{try{onEv(ev);}catch(err){console.error('[net]',err);}});});CH.on('broadcast',{event:'start'},()=>{if(!ONL)startOnline(RCFG,MYTEAM);});CH.on('broadcast',{event:'chat'},({payload})=>{if(payload&&payload.name&&payload.text)mpChatLine(payload.name,payload.text);});CH.on('broadcast',{event:'team-chat'},({payload})=>{if(payload&&payload.id!==ME&&payload.text&&payload.team===MYTEAM){chatLine(payload.name||'Player',payload.text,'team',true);chatLine(payload.name||'Player',payload.text,'team',false);}});
- const channel=CH;channel.subscribe(SUBCB=st=>{if(CH!==channel)return;CHR=st==='SUBSCRIBED';if(!CHR){if(ROOM&&st!=='CLOSED')mpSt('Connection lost – reconnecting…');return;}mpSt('In room '+code+'.');setTimeout(()=>{if(CH!==channel||!CHR)return;if(!MYP.tset){let t=0,c=0;for(const p of RS)p.team==='T'?t++:c++;MYTEAM=(cfg.mode==='tdm'||cfg.mode==='bomb')?(t<=c?'T':'CT'):'p';MYP.team=MYTEAM;MYP.tset=1;}if(CH===channel&&CHR)channel.track(MYP);},500);});
- mpSt('In room '+code+'.');mpRender();}
+ const channel=CH;channel.subscribe(SUBCB=st=>{if(CH!==channel)return;CHR=st==='SUBSCRIBED';if(!CHR){if(ROOM&&st!=='CLOSED')mpSt('Connection lost – reconnecting…');return;}mpSt('In room '+code+'.');setTimeout(()=>{if(CH!==channel||!CHR)return;if(!MYP.tset){let t=0,c=0;for(const p of RS)p.team==='T'?t++:c++;MYTEAM=(cfg.mode==='tdm'||cfg.mode==='bomb')?(t<=c?'T':'CT'):'p';MYP.team=MYTEAM;MYP.tset=1;}if(CH===channel&&CHR){channel.track(MYP);setTimeout(publishLobbyRoom,150);}},500);});
+ mpSt('Connected · room '+code+'.');mpRender();}
 function onState(a){if(!a||a[0]===ME)return;const r=RPL.get(a[0]);if(!r)return;if(a[7]&&!r.dead){r.dead=true;r.dt=0;r.gy=r.p.y;r.np.visible=false;ragStart(r.H,r.m);}else if(!a[7]&&r.dead&&r.dt>1){r.dead=false;r.hp=100;r.m.rotation.x=0;unragdoll(r.H);r.has=false;}if(r.dead)return;r.tx=a[1];r.ty=a[2];r.tz=a[3];r.tyaw=a[4];r.pitch=a[5];r.duck=!!a[6];if(a[8]!==undefined&&a[8]!==r.w){r.w=a[8];setGun(r.H,a[8]);}if(!r.has){r.has=true;r.p.set(a[1],a[2],a[3]);r.yaw=a[4];}}
 const EVQ=[];let onlineWinSent=false;const evSend=o=>{EVQ.push(Object.assign({f:ME},o));};
 function checkOnlineFragLimit(killerId){if(!ONL||matchEnding||onlineWinSent||!RCFG||!['dm','tdm'].includes(RCFG.mode))return;const lim=Math.max(1,+RCFG.frag||30),mode=RCFG.mode;let team=null,id=killerId||ME,won=false;if(mode==='tdm'){for(const tm of ['T','CT']){const score=(MYTEAM===tm?P.fr:0)+RPLIST().filter(r=>r.team===tm).reduce((n,r)=>n+(r.fr||0),0);if(score>=lim){team=tm;won=true;break;}}}else{const r=RPL.get(killerId);won=(killerId===ME?P.fr:(r?r.fr:0))>=lim;}if(won){onlineWinSent=true;evSend({t:'w',id:mode==='tdm'?'':id,team:team||MYTEAM});const localWon=mode==='tdm'?team===MYTEAM:id===ME;finishMatch((localWon?'YOU WIN':'YOU LOSE')+' · Frag limit reached');}}
@@ -1219,11 +1304,18 @@ async function startOnline(cfg,team){onlineWinSent=false;ONL=true;if(cfg.mode===
  await loadMap();await NAVP;await ASSETP;FL=S.gm.frag;P.fr=P.de=0;TSC.T=TSC.CT=0;P.money=800;GN={hegrenade:1,flashbang:2,smokegrenade:1};clearNades();P.hp=100;P.ar=100;P.dead=false;third=false;AM={};reloadT=0;
  initBots();BM.on=cfg.mode==='bomb';if(BM.on){BM.ph='off';BM.planted=false;BM.carrier=null;BM.drop=null;}let dl=defLoad();if(cfg.mode==='knife')dl=['knife','knife','knife'];else if(cfg.mode==='sniper')dl=['awp','deagle','knife'];else if(cfg.mode==='pistol')dl=['deagle','usp','knife'];S.load[0]=dl[0];S.load[1]=dl[1];S.load[2]=dl[2]||'knife';await applyLoadout();pushMe({k:0,d:0,hp:100,ar:100,started:true,team:MYTEAM});
  for(const p of RS){const r=RPL.get(p.id);if(r)r.team=teamFor(p);}restart();if(BM.on)startBomb();inMatch=true;loadDone();mpRender();play();}
-function netLeave(emit){CHR=false;if(CH){const old=CH;CH=null;old.untrack();SB.removeChannel(old);}if(LOBBY)LOBBY.untrack();ONL=false;onlineWinSent=false;ROOM='';ISHOST=false;RS=[];RCFG=null;MYP={};clearRemotes();mpRender();}
+function netLeave(emit){
+ CHR=false;
+ if(CH){const old=CH;CH=null;try{old.untrack();}catch(_){}try{SB.removeChannel(old);}catch(_){}}
+ if(LOBBY&&LOBBY_READY){try{LOBBY.untrack();}catch(_){}}
+ ONL=false;onlineWinSent=false;ROOM='';ISHOST=false;RS=[];RCFG=null;MYP={};clearRemotes();mpRender();
+ setTimeout(()=>{if(LOBBY&&LOBBY_READY)readLobbyRooms();},300);
+}
 function netHud(){return'\nROOM '+ROOM+' · '+RS.slice().sort((a,b)=>b.k-a.k).slice(0,4).map(p=>p.name+' '+p.k+'/'+p.d).join(' | ');}
 function mpShowSub(tab){document.querySelectorAll('#t-mp .mtabs button').forEach(x=>x.classList.toggle('on',x.dataset.m===tab));document.querySelectorAll('#t-mp .mpp').forEach(d=>d.hidden=d.dataset.mp!==tab);if(tab==='list')mpList();if(tab==='players')mpRender();}document.querySelectorAll('#t-mp .mtabs button,#t-mp [data-m]').forEach(b=>b.onclick=()=>mpShowSub(b.dataset.m));
 let roomReconnecting=false;function reconnectRoom(){if(roomReconnecting||!ROOM||!CH||!SB)return;roomReconnecting=true;const code=ROOM,cfg=RCFG,keep=Object.assign({},MYP),old=CH;CH=null;CHR=false;SB.removeChannel(old);MYP=keep;mpEnter(code,cfg);Object.assign(MYP,keep);roomReconnecting=false;}
-$('mpc').onclick=()=>mpCreate();$('mpq').onclick=mpQuick;$('mprfind').addEventListener('input',mpRenderRooms);const refreshRoomSearch=async()=>{const b=$('mpfindrooms');if(b.disabled)return;b.disabled=true;const label=b.textContent;b.textContent='Searching…';mpSt('Searching existing rooms only…');try{mpList();if(LOBBY){await new Promise(r=>setTimeout(r,700));const st=LOBBY.presenceState(),m={};for(const k in st)for(const e of st[k])if(e.code&&Number(e.n)>0)m[e.code]=e;LOB=Object.values(m);}mpRenderRooms();mpSt(LOB.length?'Found '+LOB.length+' existing room(s). Choose one to join.':'No existing rooms found. No room was created.');}catch(e){console.error('[room search]',e);mpSt('Could not search rooms. Try again.');}finally{b.disabled=false;b.textContent=label;}};$('mpfindrooms').onclick=refreshRoomSearch;$('mprreset').onclick=()=>{$('mprfind').value='';refreshRoomSearch();};setInterval(()=>{if(ROOM&&CH&&(CH.state==='closed'||CH.state==='errored'))reconnectRoom();},2500);$('mpg').onclick=()=>mpJoin();$('mps').onclick=sbStart;$('mpl').onclick=()=>{netLeave(true);mpSt('Left the room.');};
+$('mpc').onclick=()=>mpCreate();$('mpq').onclick=mpQuick;$('mprfind').addEventListener('input',mpRenderRooms);const refreshRoomSearch=async()=>{const b=$('mpfindrooms');if(b.disabled)return;b.disabled=true;const label=b.textContent;b.textContent='Refreshing…';mpSt('Refreshing live room list…');try{if(!await mpList())throw new Error('Lobby unavailable');await mpWaitLobbySync(2500);await new Promise(r=>setTimeout(r,200));readLobbyRooms();mpSt(LOB.length?'Updated · '+LOB.length+' room(s) found.':'Updated · no active rooms. Create a room or refresh later.');}catch(e){console.error('[room search]',e);mpSt('Could not refresh rooms. Check connection and retry.');}finally{b.disabled=false;b.textContent=label;}};$('mpfindrooms').onclick=refreshRoomSearch;$('mprreset').onclick=()=>{$('mprfind').value='';refreshRoomSearch();};setInterval(()=>{if(ROOM&&CH&&(CH.state==='closed'||CH.state==='errored'))reconnectRoom();},2500);
+setInterval(()=>{if(ROOM&&CH&&CHR&&LOBBY_READY)publishLobbyRoom();else if(LOBBY&&LOBBY_READY)readLobbyRooms();},10000);$('mpg').onclick=()=>mpJoin();$('mps').onclick=sbStart;$('mpl').onclick=()=>{netLeave(true);mpSt('Left the room.');};
 /* ================= PHONE CONTROLS + PERFORMANCE ================= */
 S.pc=Object.assign({mode:'auto',sens:1.6,size:1,op:.6,fs:true,tap:false,lay:{}},S.pc);S.pc.tap=false;S.q=S.q||'auto';S.cap=+S.cap||0;
 const TC={fx:0,fy:0},JOY={id:null,ox:0,oy:0,q:false};let PHONE=false,tcShown=false,tcEditing=false,tcSel=null,vmAcc=0,lastDraw=0;
@@ -1369,7 +1461,7 @@ function tcBuild(){const rot=document.createElement('div');rot.id='tcrotate';rot
  const stopLook=e=>{if(e.pointerId!==LK.id)return;const tap=e.type==='pointerup'&&false&&playing&&!tcEditing&&!buyOpen&&!igcOpen&&LK.mv<14&&performance.now()-LK.t0<300;LK.id=null;if(tap){semiLock=false;if(cs>=3&&GR[S.load[cs]]){startNadeHold(S.load[cs]);finishNadeHold();}else act('shoot',1);semiLock=false;}};
  document.addEventListener('pointerup',stopLook,{capture:true});document.addEventListener('pointercancel',stopLook,{capture:true});
  $('tcdone').onclick=()=>tcEdit(false);$('tcrst').onclick=()=>{S.pc.lay={};save();tcLayout();};$('tcplus').onclick=()=>tcScale(1.1);$('tcmin').onclick=()=>tcScale(1/1.1);
- $('tctog').onclick=()=>{if(!tcSel||!TGL.includes(tcSel)){flash('Chọn nút FIRE / JUMP / ALT / USE / DUCK trước',2000);return;}const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.t=!isTgl(tcSel);save();tcLayout();syncCtl();flash(tcSel.toUpperCase()+': '+(l.t?'TOGGLE (chạm bật / chạm tắt)':'HOLD (giữ mới có tác dụng)'),2200);};
+ $('tctog').onclick=()=>{if(!tcSel||!TGL.includes(tcSel)){flash('Select FIRE / JUMP / ALT / USE / DUCK first',2000);return;}const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.t=!isTgl(tcSel);save();tcLayout();syncCtl();flash(tcSel.toUpperCase()+': '+(l.t?'TOGGLE (tap to turn on / tap to turn off)':'HOLD (hold to activate)'),2200);};
  $('tchide').onclick=()=>{if(!tcSel)return;const l=S.pc.lay[tcSel]=S.pc.lay[tcSel]||{};l.on=l.on===false;save();tcLayout();};tcLayout();}
 /* ---- Controls panel (main menu -> Controls) + Performance (Settings > Game) ---- */
 const pcApply=()=>{save();updPhone();tcLayout();resize();applyFog();};
