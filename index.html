@@ -911,7 +911,7 @@ function clearNades(){clearPK();NADES.forEach(g=>scene.remove(g.m));SMK.forEach(
 let nadeHold=null,nadeHideTimer=0;
 // TINH CHINH VI TRI MODEL LUCU DAN: offset luc spawn tinh tu mat nguoi choi (don vi world).
 const NADE_MODEL_SPAWN_OFFSET={x:0,y:0,z:0}; // toa do model luc vua roi tay
-const NADE_MODEL_FLIGHT_OFFSET={x:0,y:-37,z:0}; // toa do model khi dang nam/bay
+const NADE_MODEL_FLIGHT_OFFSET={x:0,y:0,z:0}; // toa do model khi dang nam/bay
  function nadeAnim(which){const m=third?pm:vm;if(!m)return;const re=which==='pin'?/pin|pull|draw|deploy/i:/throw|release|attack|shoot/i;let i=m.seqs.findIndex(q=>re.test(q.n));if(i<0)i=m.seqs.findIndex(q=>/idle|stand/i.test(q.n));if(i>=0){m.play(i,true);m.tag='nade';if(which==='pin'&&nadeHold){const q=m.seqs[i];if(q&&q.nf>1&&q.fps)nadeHold.pinEnd=performance.now()+(q.nf-1)/q.fps*1000;}}}
  function startNadeHold(id){if(!GR[id]||!GN[id]||P.dead||nadeHold)return false;nadeHold={id,t:performance.now()};busyT=999;const hand=third?pm:vm;if(hand&&hand.grp)hand.grp.visible=true;nadeAnim('pin');playSnd(id,'fire');clearTimeout(nadeHideTimer);return true;}
  function finishNadeHold(){if(!nadeHold)return false;const h=nadeHold;nadeHold=null;clearTimeout(nadeHideTimer);const held=clamp((performance.now()-h.t)/1100,0,1),spd=430+held*520,id=h.id;busyT=.35;const hand=third?pm:vm;if(hand&&hand.grp)hand.grp.visible=true;if(!GN[id]||P.dead)return false;GN[id]--;const cp=Math.cos(pitch+.1),d={x:-Math.sin(yaw)*cp,y:Math.sin(pitch+.1),z:-Math.cos(yaw)*cp};let m=null;
