@@ -565,7 +565,7 @@ async function loadMap(){let w;const id=S.map;
  try{if(id==='test'||(id==='draft'&&!ED.boxes.length))w=boxMap('test');else if(id==='draft')w=boxMap('c',ED.boxes);else if(MAPS[id])w=boxMap('c',MAPS[id].b,MAPS[id].sp,MAPS[id].st);else{const r=lib.find(x=>String(x.id)===String(id));if(!r){S.map='test';return loadMap();}w=r.type==='cmap'?boxMap('c',JSON.parse(new TextDecoder().decode(r.data)).boxes):bsp(r.data.slice(0),wadMaps());}}
  catch(e){err('Map: '+e.message);S.map='test';w=boxMap('test');}
  if(world){HOLES.forEach(o=>scene.remove(o));HOLES.length=0;scene.remove(world.grp);world.grp.traverse(o=>{o.geometry&&o.geometry.dispose();if(o.material){o.material.map&&o.material.map.dispose();o.material.dispose();}});}
- world=w;scene.add(w.grp);scene.fog=new THREE.Fog(SKY,w.fog[0],w.fog[1]);cam.far=w.fog[1]+3000;cam.updateProjectionMatrix();applyFog();restart();save();initBots();NAVP=prepareNav().then(loadDone,loadDone);}
+ world=w;scene.add(w.grp);scene.fog=new THREE.Fog(SKY,w.fog[0],w.fog[1]);cam.far=w.fog[1]+3000;cam.updateProjectionMatrix();applyFog();restart();save();clearAllRags();initBots();NAVP=prepareNav().then(loadDone,loadDone);}
 /* ---------- Weapons, thumbnails, library UI, buy menu ---------- */
 const CATS=['Pistols','Shotguns','Sub-Machine Guns','Rifles','Machine Guns','Knife','Equipment'];
 const WEAPONS0=[['glock18','Glock 18',1,350,1],['usp','USP .45 Tactical',1,450,1],['p228','P228 Compact',1,500,1],['fiveseven','FN Five-seveN',1,600,1],['elite','.40 Dual Elites',1,650,1],['deagle','Desert Eagle .50AE',1,700,1],
@@ -736,7 +736,7 @@ function showHome(){const m=$('menu');document.body.classList.toggle('mainscr',!
  .forEach(([n,f])=>{const d=document.createElement('div');d.className='mi';d.textContent=n;d.onclick=f;L.appendChild(d);});}
 function openSet(sub){panel('set','Settings');const b=document.querySelector('.stabs button[data-s="'+sub+'"]');if(b)b.click();}
 function panel(t,n){document.body.classList.toggle('mainscr',!inMatch);$('menu').classList.remove('home');$('bname').textContent=n;if(t==='models'){showTab('weps');$('t-models').style.display='block';}else showTab(t);}
-function leaveMatch(){inMatch=false;netLeave(true);BM.on=false;clearBomb();third=false;P.dead=false;setZoom(0);clearNades();for(const b of bots)scene.remove(b.m);bots=[];showHome();}
+function leaveMatch(){inMatch=false;netLeave(true);BM.on=false;clearBomb();third=false;P.dead=false;setZoom(0);clearNades();clearAllRags();for(const b of bots)scene.remove(b.m);bots=[];showHome();}
 $('bback').onclick=showHome;
 function pause(){setZoom(0);playing=false;mh=false;mh2=false;locked=false;if(typeof tcSync==='function')tcSync();for(const k in K)K[k]=false;showHome();try{if(document.pointerLockElement)document.exitPointerLock();}catch(e){}}
 $('go').onclick=play;
@@ -774,11 +774,14 @@ document.addEventListener('mousedown',e=>{
 document.addEventListener('mouseup',e=>{if(e.button===0){mh=false;semiLock=false;if(nadeHold)finishNadeHold();}if(e.button===2){mh2=false;if(nadeHold)finishNadeHold();}});
 document.addEventListener('mousemove',e=>{if(!playing||!(locked||e.buttons&1))return;const s=S.sens*0.0008*(zoomFov?zoomFov/S.fov:1);yaw-=e.movementX*s;pitch=clamp(pitch-e.movementY*s,-1.5,1.5);});
 /* ---------- Deathmatch ---------- */
-const W={};[['ak47',36,.0955,30,90,.98,1.55,.9,.35,.15,3.5,2.45,0],['glock18',25,.2,20,120,.75,.75,1,.2,.1,3,2.2,1],['deagle',54,.225,7,35,.81,1.5,2.2,.4,.1,6,2.2,1],['scout',75,1.25,10,90,.98,1.7,1.6,.1,.05,6,2,1],['awp',115,1.5,10,30,.99,1.95,3,.1,.02,14,2.5,1],['m4a1',33,.0875,30,90,.97,1.4,.7,.25,.1,3,3.05,0],['usp',34,.15,12,100,.79,1,.9,.15,.08,3,2.7,1],['galil',30,.0875,35,90,.98,1.55,.75,.3,.15,3.5,2.45,0],['famas',30,.0825,25,90,.96,1.4,.7,.25,.12,3,3.3,0],['mp5navy',26,.075,30,120,.84,1,.45,.2,.2,2.2,2.63,0],['p90',26,.07,50,100,.84,1.4,.4,.18,.25,2,3.4,0],['p228',32,.15,13,52,.8,1,.9,.15,.1,3,2.7,1],['fiveseven',20,.15,20,100,.885,1.5,.7,.15,.1,3,2.7,1],['elite',36,.12,30,120,.75,1,1,.25,.15,3.5,4,1],['tmp',20,.07,30,120,.85,1,.45,.2,.2,2.2,2.1,0],['mac10',29,.075,30,100,.82,1,.55,.25,.25,2.5,3.1,0],['ump45',30,.105,25,100,.82,1.1,.6,.22,.15,2.5,3.5,0],['m249',9,.08,100,200,.97,1.6,.45,.25,.3,5,5.7,0]].forEach(a=>W[a[0]]={d:a[1],r:a[2],mag:a[3],res:a[4],rm:a[5],ar:a[6],rp:a[7],ry:a[8],acc:a[9],mv:a[10],rt:a[11],semi:a[12]});
+const W={};[['ak47',36,.0955,30,90,.98,1.55,.9,.35,.15,3.5,2.45,0],['glock18',25,.2,20,120,.75,.75,1,.2,.1,3,2.2,1],['deagle',54,.225,7,35,.81,1.5,2.2,.4,.1,6,2.2,1],['scout',75,1.25,10,90,.98,1.7,1.6,.1,.05,6,2,1],['awp',115,1.5,10,30,.99,1.95,3,.1,.02,14,2.5,1],['m4a1',33,.0875,30,90,.97,1.4,.7,.25,.1,3,3.05,0],['usp',34,.15,12,100,.79,1,.9,.15,.08,3,2.7,1],['galil',30,.0875,35,90,.98,1.55,.75,.3,.15,3.5,2.45,0],['famas',30,.0825,25,90,.96,1.4,.7,.25,.12,3,3.3,0],['mp5navy',26,.075,30,120,.84,1,.45,.2,.2,2.2,2.63,0],['p90',26,.07,50,100,.84,1.4,.4,.18,.25,2,3.4,0],['p228',32,.15,13,52,.8,1,.9,.15,.1,3,2.7,1],['fiveseven',20,.15,20,100,.885,1.5,.7,.15,.1,3,2.7,1],['elite',36,.12,30,120,.75,1,1,.25,.15,3.5,4,1],['tmp',20,.07,30,120,.85,1,.45,.2,.2,2.2,2.1,0],['mac10',29,.075,30,100,.82,1,.55,.25,.25,2.5,3.1,0],['ump45',30,.105,25,100,.82,1.1,.6,.22,.15,2.5,3.5,0],['m249',18,.08,100,200,.97,1.6,.45,.25,.3,5,5.7,0]].forEach(a=>W[a[0]]={d:a[1],r:a[2],mag:a[3],res:a[4],rm:a[5],ar:a[6],rp:a[7],ry:a[8],acc:a[9],mv:a[10],rt:a[11],semi:a[12]});
 Object.assign(W,{m3:{d:20,r:.88,mag:8,res:32,rm:.97,ar:1,rp:5,ry:.6,acc:3,mv:3,rt:3,semi:1,pel:8,sp:3.4},xm1014:{d:14,r:.25,mag:7,res:32,rm:.96,ar:1,rp:3.2,ry:.5,acc:3.2,mv:3,rt:3.2,semi:0,pel:6,sp:3.8,sgr:1.6},
  sg552:{d:33,r:.0825,mag:30,res:90,rm:.98,ar:1.4,rp:.8,ry:.3,acc:.15,mv:3.5,rt:3,semi:0},aug:{d:32,r:.0825,mag:30,res:90,rm:.96,ar:1.4,rp:.75,ry:.25,acc:.12,mv:3.2,rt:3.3,semi:0}});
 W.knife={d:35,r:.35,mag:0,res:0,rm:1,ar:1,rp:0,ry:0,acc:0,mv:0,rt:0};for(const k in W)RATE[k]=W[k].r;RATE.hegrenade=RATE.flashbang=RATE.smokegrenade=1;
-const SG_PAUSE=.15; /* seconds the hand stays frozen on the last frame after each inserted shell */
+/* Shotgun reload: the 'insert' animation plays up to the frame where the shell is fully loaded, the ammo counter goes +1 on that exact frame,
+   the pose is held for SG_PAUSE seconds, then the animation loops for the next shell.
+   SG_LOAD_AT = fraction (0..1) of the insert animation at which the shell is in. Raise it if the hand freezes too early, lower it if too late. */
+const SG_PAUSE=.12,SG_LOAD_AT={m3:.6,xm1014:.6};
 const BURST={glock18:false,famas:false},BI={glock18:.055,famas:.065};let burstN=0,burstT=0,burstId='',inBurst=false;
 let stabNext=0,busyT=0,silAnim=0,silDur=1.6,AM={},reloadT=0,semiLock=false,punch=0,punchY=0,burst=0,lastShot=0,bots=[],AC=null;let FL=S.gm.frag,gmT=S.gm.time*60;const bufs=new Map(),DG=Math.PI/180;
 Object.assign(P,{team:'p',money:800,hp:100,ar:100,fr:0,de:0,dead:false,rt:0});
@@ -809,15 +812,22 @@ function playSnd(id,kind,vol,bot,sl){const L=SL[id];if(!L)return;
  for(const list of[pri,alt])if(list&&list.length&&playFile(id,list[Math.random()*list.length|0],fb,(sil?SIL_FX[id].vol:1)*(vol||1)))return;
  if(syn)synth(id,kind,vol,bot?!!sl:undefined);}
 let SGR=null;
-function sgSeq(re){const m=vm;if(!m)return null;const i=m.seqs.findIndex(q=>re.test(q.n));if(i<0)return null;const q=m.seqs[i];return{i,d:Math.max(.2,q.nf/q.fps),f:Math.max(.05,(q.nf-1)/q.fps)};}
-function sgPlay(re,dflt,hold,id){const q=sgSeq(re),r=(id&&W[id]&&W[id].sgr)||1;if(SGR)SGR.fz=0;if(vm)vm.rate(r);
- if(q){vm.play(q.i,true);vm.tag='reload';if(hold&&SGR)SGR.fz=performance.now()+q.f/r*1000;return q.d/r+(hold?SG_PAUSE:0);}return dflt/r+(hold?SG_PAUSE:0);}
-function sgStart(id,w){const a=ammoOf(id);SGR={id,ph:'start',left:Math.min(w.mag-a.m,a.r),t:sgPlay(/start_?reload|reload_?start/i,.4,false,id)};}
-function sgTick(dt){if(!SGR)return;if(P.dead||S.load[cs]!==SGR.id){SGR=null;return;}SGR.t-=dt;if(SGR.t>0)return;const id=SGR.id,w=W[id],a=ammoOf(id);SGR.fz=0;
- if(SGR.ph==='ins'){a.m++;a.r--;SGR.left--;}
+function sgSeq(re){const m=vm;if(!m)return null;const i=m.seqs.findIndex(q=>re.test(q.n));if(i<0)return null;const q=m.seqs[i];return{i,d:Math.max(.2,q.nf/q.fps),nf:q.nf,fps:q.fps};}
+function sgPlay(re,dflt,id){const q=sgSeq(re),r=(W[id]&&W[id].sgr)||1;if(SGR)SGR.fz=0;if(vm)vm.rate(r);
+ if(q&&vm){vm.play(q.i,true);vm.tag='reload';return q.d/r;}return dflt/r;}
+/* plays the insert animation, freezes it on the 'loaded' frame; returns {t: time until loaded, rest: time left in the animation} */
+function sgInsert(id){const q=sgSeq(/insert/i),r=(W[id]&&W[id].sgr)||1;SGR.fz=0;if(vm)vm.rate(r);
+ if(!q||!vm)return{t:.45/r,rest:0};
+ vm.play(q.i,true);vm.tag='reload';const last=Math.max(1,q.nf-1),hf=Math.max(1,Math.min(last,Math.round((SG_LOAD_AT[id]||.6)*last))),t=hf/q.fps/r;
+ SGR.fz=performance.now()+t*1000;return{t,rest:Math.max(0,(last-hf)/q.fps/r)};}
+function sgStart(id,w){const a=ammoOf(id);SGR={id,ph:'start',left:Math.min(w.mag-a.m,a.r),t:0,fz:0,rest:0};SGR.t=sgPlay(/start_?reload|reload_?start/i,.4,id);}
+function sgTick(dt){if(!SGR)return;if(P.dead||S.load[cs]!==SGR.id){SGR=null;if(vm)vm.rate(1);return;}SGR.t-=dt;if(SGR.t>0)return;const id=SGR.id,w=W[id],a=ammoOf(id);
+ if(SGR.ph==='load'){a.m++;a.r--;SGR.left--;SGR.ph='hold';SGR.t=SG_PAUSE;return;}
+ if(SGR.ph==='hold'){if(SGR.left<=0||a.r<=0||a.m>=w.mag){SGR.fz=0;SGR.ph='fin';SGR.t=SGR.rest;return;}
+  const o=sgInsert(id);SGR.ph='load';SGR.t=o.t;SGR.rest=o.rest;playSnd(id,'ins');return;}
+ if(SGR.ph==='fin'){SGR.ph='end';SGR.t=sgPlay(/after_?reload|pump|reload_?end/i,.6,id);playSnd(id,'pump');return;}
  if(SGR.ph==='end'){SGR=null;if(vm)vm.rate(1);return;}
- if(SGR.left<=0||a.r<=0||a.m>=w.mag){SGR.ph='end';SGR.t=sgPlay(/after_?reload|pump|reload_?end/i,.6,false,id);playSnd(id,'pump');return;}
- SGR.ph='ins';SGR.t=sgPlay(/insert/i,.45,true,id);playSnd(id,'ins');}
+ const o=sgInsert(id);SGR.ph='load';SGR.t=o.t;SGR.rest=o.rest;playSnd(id,'ins');}
 function startReload(){const id=S.load[cs],w=W[id];if(!w||!w.mag||reloadT>0||busyT>0||P.dead)return;const a=ammoOf(id);if(a.r<=0){flash('No ammo');return;}if(a.m>=w.mag){flash('Magazine full');return;}setZoom(0);rescopeAt=0;
  if(w.pel){if(!SGR)sgStart(id,w);return;}
  reloadT=w.rt;const m=vm;if(m){const l=findSeq(m,'reload');if(l.length){const q=m.seqs[l[0]];m.play(l[0],true);m.tag='reload';reloadT=Math.max(.4,q.nf/q.fps);}else flash('No "reload" animation: '+m.seqs.map(q=>q.n).join(', ').slice(0,90),3000);}playSnd(id,'reload');}
@@ -921,6 +931,7 @@ function unragdoll(H){if(!H.rag)return;for(const r of H.rag){r.par.add(r.o);r.o.
  H.rag=null;const i=RAGS.indexOf(H);if(i>=0)RAGS.splice(i,1);}
 function ragFrom(r){const id=r.killer;if(id===ME)return P.p;const k=id&&RPL.get(id);if(k)return k.p;if(r.lastHit&&performance.now()-r.lastHit.t<2500)return r.lastHit;return null;}
 function ragLater(r){if(r.H.rag||r.ragT)return;r.ragT=setTimeout(()=>{r.ragT=0;if(r.dead&&!r.H.rag)ragStart(r.H,r.m,ragFrom(r));},150);}
+function clearAllRags(){for(const H of RAGS.slice()){if(H===PH)unragdoll(H);else ragClear(H);}}
 function ragClear(H){if(!H.rag)return;H.rag.forEach(r=>scene.remove(r.pvt));H.rag=null;H.ragHat=null;const i=RAGS.indexOf(H);if(i>=0)RAGS.splice(i,1);}
 function ragTick(dt){if(!world)return;dt=Math.min(dt,.05);for(const H of RAGS)for(const r of H.rag){const p=r.pvt,v=r.v;
  if(r.rest){if(r.st>0){r.st-=dt;p.quaternion.slerp(r.tq,Math.min(1,dt*12));}continue;}
