@@ -1108,7 +1108,7 @@ function botTick(b,dt){
   if(!b.blind){const q=posOf(t),tv=t===P?P.v:{x:t.vx,z:t.vz},ok=Math.random()<Math.min(.9,clamp(.6-d/3000,.08,.6)*dfm())*(Math.hypot(tv.x,tv.z)>180?.65:1),j=()=>ok?0:(Math.random()-.5)*80;
    {const sl=botSil(b),R=hearRange(b.w,sl),dd=Math.hypot(b.p.x-P.p.x,b.p.z-P.p.z);if(dd<R)playSnd(b.w,'fire',1-dd/R,true,sl);}
    tracer({x:b.p.x-Math.sin(b.yaw)*22+Math.cos(b.yaw)*12,y:b.p.y+52,z:b.p.z-Math.cos(b.yaw)*22-Math.sin(b.yaw)*12},{x:q.x+j(),y:q.y+40+j()/2,z:q.z+j()},0xff6a5a,SNIP.includes(b.w)?.8:0);
-   if(ok){blood({x:q.x,y:q.y+45,z:q.z},{x:(q.x-b.p.x)/d,y:.2,z:(q.z-b.p.z)/d},8);const g=Math.random()<.1?'h':Math.random()<.55?'c':Math.random()<.4?'s':'l';if(t===P){const h=$('hit');h.style.opacity=1;setTimeout(()=>h.style.opacity=0,120);}if(hurt(t,w.d*Math.pow(w.rm,d/500),w.ar,g))kill(b,t,b.w,g==='h',{x:dx/L,y:dy/L,z:dz/L});}}}}
+   if(ok){blood({x:q.x,y:q.y+45,z:q.z},{x:(q.x-b.p.x)/d,y:.2,z:(q.z-b.p.z)/d},8);const g=Math.random()<.1?'h':Math.random()<.55?'c':Math.random()<.4?'s':'l';if(t===P){const h=$('hit');h.style.opacity=1;setTimeout(()=>h.style.opacity=0,120);}if(hurt(t,w.d*Math.pow(w.rm,d/500),w.ar,g))kill(b,t,b.w,g==='h');}}}}
 function gunMesh(id){const g=new THREE.Group(),c=WEAPONS0.find(w=>w.id===id),cat=c?c.cat:4,dk=0x24282c,mt=0x3a3f45,wd=0x6b4a2b,bb=(w,h,d,col,x,y,z)=>{g.add(mk(new THREE.BoxGeometry(w,h,d),col,x,y,z));};
  if(cat===1){bb(3,4,13,mt,0,2,-6);bb(3,8,4,dk,0,-3,-1);bb(2,2,3,dk,0,-.5,-4);}
  else if(cat===3){bb(4,6,16,mt,0,0,-6);bb(3,5,8,dk,0,-.5,5);bb(3,10,4,dk,0,-7,-3);bb(2,2,8,dk,0,1,-17);}
